@@ -9,8 +9,8 @@ pyyaml>=6.0.1
 
 # Data Processing
 bibtexparser>=1.4.1
-pandas>=1.1.0,<2.0.0
-numpy>=1.20.0
+pandas>=2.1.0
+numpy>=1.24.0
 
 # arXiv API
 arxiv>=2.1.0
