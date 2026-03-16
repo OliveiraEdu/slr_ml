@@ -40,6 +40,14 @@ class LoadConfigRequest(BaseModel):
     config_dir: str = "config"
 
 
+class UpdateClassificationRequest(BaseModel):
+    """Request model for updating classification configuration."""
+    labels: Optional[dict] = None
+    relevance: Optional[dict] = None
+    thresholds: Optional[dict] = None
+    model: Optional[dict] = None
+
+
 class ImportRequest(BaseModel):
     source: str
     file_path: str
@@ -122,6 +130,70 @@ async def config_status():
     return {
         "loaded": app_state["config_loaded"],
         "enabled_sources": _get_enabled_sources(),
+    }
+
+
+@app.get("/config/classification")
+async def get_classification_config():
+    """Get current classification configuration."""
+    import yaml
+    
+    config_path = Path("config/classification.yaml")
+    if not config_path.exists():
+        raise HTTPException(status_code=404, detail="Classification config not found")
+    
+    with open(config_path) as f:
+        config = yaml.safe_load(f)
+    
+    return {"classification": config}
+
+
+@app.put("/config/classification")
+async def update_classification_config(request: UpdateClassificationRequest):
+    """Update classification configuration (PICOC, thresholds, etc.)."""
+    import yaml
+    
+    config_path = Path("config/classification.yaml")
+    if not config_path.exists():
+        raise HTTPException(status_code=404, detail="Classification config not found")
+    
+    with open(config_path) as f:
+        current_config = yaml.safe_load(f)
+    
+    if request.labels is not None:
+        if "labels" not in current_config:
+            current_config["labels"] = {}
+        current_config["labels"].update(request.labels)
+    
+    if request.relevance is not None:
+        if "relevance" not in current_config:
+            current_config["relevance"] = {}
+        current_config["relevance"].update(request.relevance)
+    
+    if request.thresholds is not None:
+        if "thresholds" not in current_config:
+            current_config["thresholds"] = {}
+        current_config["thresholds"].update(request.thresholds)
+    
+    if request.model is not None:
+        if "model" not in current_config:
+            current_config["model"] = {}
+        current_config["model"].update(request.model)
+    
+    with open(config_path, "w") as f:
+        yaml.dump(current_config, f, default_flow_style=False)
+    
+    app_state["classification_config"] = None
+    
+    return {
+        "status": "updated",
+        "config_path": str(config_path),
+        "updated_fields": {
+            "labels": request.labels is not None,
+            "relevance": request.relevance is not None,
+            "thresholds": request.thresholds is not None,
+            "model": request.model is not None,
+        }
     }
 
 
