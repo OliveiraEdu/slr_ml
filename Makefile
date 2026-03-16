@@ -13,7 +13,7 @@ help:
 
 install:
 	pip3 install -r requirements.txt || python3 -m pip install -r requirements.txt
-	pip3 install torch transformers ctranslate2 || python3 -m pip install torch transformers ctranslate2
+	pip3 install torch transformers || python3 -m pip install torch transformers || echo "Warning: ML dependencies not installed"
 
 convert:
 	python3 scripts/convert_model.py --model allenai/scibert_scivocab_uncased --output ./models/scibert-ct2
