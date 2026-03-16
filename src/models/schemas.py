@@ -53,18 +53,41 @@ class ModelConfig(BaseModel):
     device: str = "auto"
 
 
-class PicocLabel(BaseModel):
+class ClassificationLabel(BaseModel):
     enabled: bool = True
     prompt: str
-    description: str
+    description: str = ""
 
 
-class PicocLabels(BaseModel):
-    population: PicocLabel
-    intervention: PicocLabel
-    comparison: PicocLabel
-    outcomes: PicocLabel
-    context: PicocLabel
+class SubQuestions(BaseModel):
+    sq1_blockchain_platforms: ClassificationLabel
+    sq2_provenance_model: ClassificationLabel
+    sq3_architecture: ClassificationLabel
+    sq4_permissioned_vs_permissionless: ClassificationLabel
+    sq5_evaluation: ClassificationLabel
+
+
+class InclusionCriteria(BaseModel):
+    i1_language: ClassificationLabel
+    i2_publication_type: ClassificationLabel
+    i3_date_range: ClassificationLabel
+    i4_technical_implementation: ClassificationLabel
+    i5_domain_relevance: ClassificationLabel
+
+
+class ExclusionCriteria(BaseModel):
+    e1_opinion_pieces: ClassificationLabel
+    e2_non_research: ClassificationLabel
+    e3_no_implementation: ClassificationLabel
+    e4_duplicates: ClassificationLabel
+    e5_no_fulltext: ClassificationLabel
+    e6_no_blockchain: ClassificationLabel
+    e7_no_scientific_data: ClassificationLabel
+
+
+class KeywordsConfig(BaseModel):
+    required: list[str] = Field(default_factory=list)
+    optional: list[str] = Field(default_factory=list)
 
 
 class RelevanceConfig(BaseModel):
@@ -93,8 +116,12 @@ class ScreeningStages(BaseModel):
 
 class ClassificationConfig(BaseModel):
     model: ModelConfig = Field(default_factory=ModelConfig)
-    labels: Optional[PicocLabels] = None
+    research_question: Optional[str] = None
     relevance: RelevanceConfig = Field(default_factory=RelevanceConfig)
+    sub_questions: Optional[SubQuestions] = None
+    inclusion_criteria: Optional[InclusionCriteria] = None
+    exclusion_criteria: Optional[ExclusionCriteria] = None
+    keywords: Optional[KeywordsConfig] = None
     thresholds: Thresholds = Field(default_factory=Thresholds)
     stages: ScreeningStages = Field(default_factory=ScreeningStages)
 

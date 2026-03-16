@@ -1,49 +1,142 @@
-# Classification Configuration
-# PICOC criteria and ML classification settings
+# Classification Configuration for Systematic Literature Review
+# Topic: maDMP + Blockchain for Scientific Data Provenance
 
 classification:
   # Model configuration
   model:
     name: "allenai/scibert_scivocab_uncased"
-    approach: "zero-shot"  # zero-shot, fine-tuned
-    device: "auto"  # auto, cpu, cuda
+    approach: "zero-shot"
+    device: "auto"
 
-  # PICOC Labels
-  labels:
-    population:
-      enabled: true
-      prompt: "This paper studies the following population: {text}"
-      description: "The target population or subjects being studied"
-    intervention:
-      enabled: true
-      prompt: "This paper evaluates the following intervention: {text}"
-      description: "The intervention or exposure being investigated"
-    comparison:
-      enabled: true
-      prompt: "This paper compares: {text}"
-      description: "The comparison or control group"
-    outcomes:
-      enabled: true
-      prompt: "This paper measures outcomes: {text}"
-      description: "The outcome measures or results"
-    context:
-      enabled: true
-      prompt: "The context is: {text}"
-      description: "The setting or context of the study"
+  # Research Question for relevance classification
+  research_question: |
+    How can machine-actionable Data Management Plans (maDMPs) be anchored on 
+    a permissioned blockchain to enable verifiable provenance tracking for scientific data?
 
-  # Binary relevance classification
+  # Relevance classification prompts
   relevance:
     enabled: true
-    include_prompt: "This paper is relevant to the research question and should be included in the systematic review"
-    exclude_prompt: "This paper is not relevant to the research question and should be excluded from the systematic review"
+    include_prompt: |
+      This paper addresses machine-actionable Data Management Plans (maDMPs) combined with 
+      blockchain technology to provide verifiable provenance tracking for scientific data. 
+      It describes a technical implementation and is relevant to the research question.
+    exclude_prompt: |
+      This paper is not about maDMPs, blockchain-based scientific data provenance, 
+      or verifiable metadata tracking for research data. It should be excluded.
     threshold: 0.5
+
+  # Sub-Questions (for detailed classification)
+  sub_questions:
+    sq1_blockchain_platforms:
+      enabled: true
+      prompt: "This paper explores blockchain platforms used for scientific data provenance"
+      description: "What blockchain platforms have been used for scientific data provenance?"
+    
+    sq2_provenance_model:
+      enabled: true
+      prompt: "This paper models and represents data provenance using semantic approaches"
+      description: "How do existing systems model and represent provenance?"
+    
+    sq3_architecture:
+      enabled: true
+      prompt: "This paper describes blockchain combined with external storage architecture"
+      description: "What are the architectural patterns for combining blockchain with external storage?"
+    
+    sq4_permissioned_vs_permissionless:
+      enabled: true
+      prompt: "This paper compares permissioned vs permissionless blockchains for scientific data"
+      description: "How do permissioned blockchains compare to permissionless for scientific data?"
+    
+    sq5_evaluation:
+      enabled: true
+      prompt: "This paper evaluates blockchain provenance systems using specific methods"
+      description: "What evaluation methods have been used to assess blockchain provenance systems?"
+
+  # Inclusion Criteria (I1-I5)
+  inclusion_criteria:
+    i1_language:
+      enabled: true
+      prompt: "This paper is written in English"
+      description: "English language publications"
+    i2_publication_type:
+      enabled: true
+      prompt: "This paper is a peer-reviewed journal article, conference proceeding, or arXiv preprint"
+      description: "Peer-reviewed journal articles, conference proceedings, arXiv preprints"
+    i3_date_range:
+      enabled: true
+      prompt: "This paper was published between 2018 and 2026"
+      description: "Publications from 2018 to 2026"
+    i4_technical_implementation:
+      enabled: true
+      prompt: "This paper describes a technical system, framework, or methodology"
+      description: "Must describe a technical system, framework, or methodology"
+    i5_domain_relevance:
+      enabled: true
+      prompt: "This paper addresses maDMP OR (blockchain provenance AND scientific/research data)"
+      description: "Must address maDMP OR (blockchain provenance AND scientific data)"
+
+  # Exclusion Criteria (E1-E7)
+  exclusion_criteria:
+    e1_opinion_pieces:
+      enabled: true
+      prompt: "This paper is an opinion piece, editorial, or non-empirical contribution"
+      description: "Opinion pieces, editorials - not empirical/technical"
+    e2_non_research:
+      enabled: true
+      prompt: "This paper addresses non-research contexts like supply chains or finance"
+      description: "Non-research contexts - supply chains, financial applications"
+    e3_no_implementation:
+      enabled: true
+      prompt: "This paper only presents conceptual frameworks without implementation"
+      description: "Conceptual frameworks without implementation details"
+    e4_duplicates:
+      enabled: false
+      prompt: "This is a duplicate publication"
+      description: "Duplicate publications (handled by deduplication)"
+    e5_no_fulltext:
+      enabled: true
+      prompt: "Full text is unavailable for this paper"
+      description: "Full text unavailable"
+    e6_no_blockchain:
+      enabled: true
+      prompt: "This paper addresses provenance but does NOT use blockchain technology"
+      description: "Pure provenance without blockchain"
+    e7_no_scientific_data:
+      enabled: true
+      prompt: "This paper addresses general-purpose systems not applicable to scientific data"
+      description: "General-purpose systems not applicable to scientific data"
+
+  # Keywords for matching
+  keywords:
+    required:
+      - "maDMP"
+      - "machine-actionable"
+      - "data management plan"
+      - "blockchain"
+      - "provenance"
+      - "scientific data"
+      - "research data"
+      - "verification"
+    optional:
+      - "permissioned"
+      - "Hyperledger"
+      - "IPFS"
+      - "PROV-O"
+      - "RDA"
+      - "FAIR"
+      - "reproducibility"
+      - "metadata"
+      - "immutability"
+      - "lineage"
+      - "DMP"
+      - "open science"
 
   # Thresholds for screening decisions
   thresholds:
-    include: 0.6    # Minimum score to include
-    exclude: 0.3    # Maximum score to exclude
-    uncertain: 0.3  # Range for manual review (0.3-0.6)
-    confidence: 0.15  # Minimum confidence gap for automatic decision
+    include: 0.6    # Score >= 0.6 → Include
+    exclude: 0.3    # Score <= 0.3 → Exclude
+    uncertain: 0.3  # 0.3 - 0.6 → Manual review
+    confidence: 0.15
 
   # Screening stages
   stages:

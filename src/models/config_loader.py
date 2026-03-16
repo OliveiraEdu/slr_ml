@@ -8,13 +8,16 @@ import yaml
 from src.models.schemas import (
     ArxivConfig,
     ClassificationConfig,
+    ClassificationLabel,
+    ExclusionCriteria,
+    InclusionCriteria,
+    KeywordsConfig,
     ModelConfig,
-    PicocLabel,
-    PicocLabels,
     PrismaConfig,
     RelevanceConfig,
     ScreeningStages,
     SourcesConfig,
+    SubQuestions,
     Thresholds,
 )
 
@@ -50,31 +53,77 @@ class ConfigLoader:
         return SourcesConfig(**data["sources"])
 
     def load_classification(self) -> ClassificationConfig:
-        """Load classification configuration."""
+        """Load classification configuration with flexible schema."""
         data = self._load_yaml("classification.yaml")
         cls_data = data.get("classification", {})
         
+        # Model config
         model = ModelConfig(**cls_data.get("model", {}))
         
-        labels_data = cls_data.get("labels", {})
-        labels = None
-        if labels_data:
-            labels = PicocLabels(
-                population=PicocLabel(**labels_data.get("population", {})),
-                intervention=PicocLabel(**labels_data.get("intervention", {})),
-                comparison=PicocLabel(**labels_data.get("comparison", {})),
-                outcomes=PicocLabel(**labels_data.get("outcomes", {})),
-                context=PicocLabel(**labels_data.get("context", {})),
+        # Research question
+        research_question = cls_data.get("research_question")
+        
+        # Relevance config
+        relevance = RelevanceConfig(**cls_data.get("relevance", {}))
+        
+        # Thresholds
+        thresholds = Thresholds(**cls_data.get("thresholds", {}))
+        
+        # Stages
+        stages = ScreeningStages(**cls_data.get("stages", {}))
+        
+        # Sub-questions (optional)
+        sub_questions = None
+        sq_data = cls_data.get("sub_questions", {})
+        if sq_data:
+            sub_questions = SubQuestions(
+                sq1_blockchain_platforms=ClassificationLabel(**sq_data.get("sq1_blockchain_platforms", {})),
+                sq2_provenance_model=ClassificationLabel(**sq_data.get("sq2_provenance_model", {})),
+                sq3_architecture=ClassificationLabel(**sq_data.get("sq3_architecture", {})),
+                sq4_permissioned_vs_permissionless=ClassificationLabel(**sq_data.get("sq4_permissioned_vs_permissionless", {})),
+                sq5_evaluation=ClassificationLabel(**sq_data.get("sq5_evaluation", {})),
             )
         
-        relevance = RelevanceConfig(**cls_data.get("relevance", {}))
-        thresholds = Thresholds(**cls_data.get("thresholds", {}))
-        stages = ScreeningStages(**cls_data.get("stages", {}))
+        # Inclusion criteria (optional)
+        inclusion_criteria = None
+        inc_data = cls_data.get("inclusion_criteria", {})
+        if inc_data:
+            inclusion_criteria = InclusionCriteria(
+                i1_language=ClassificationLabel(**inc_data.get("i1_language", {})),
+                i2_publication_type=ClassificationLabel(**inc_data.get("i2_publication_type", {})),
+                i3_date_range=ClassificationLabel(**inc_data.get("i3_date_range", {})),
+                i4_technical_implementation=ClassificationLabel(**inc_data.get("i4_technical_implementation", {})),
+                i5_domain_relevance=ClassificationLabel(**inc_data.get("i5_domain_relevance", {})),
+            )
+        
+        # Exclusion criteria (optional)
+        exclusion_criteria = None
+        exc_data = cls_data.get("exclusion_criteria", {})
+        if exc_data:
+            exclusion_criteria = ExclusionCriteria(
+                e1_opinion_pieces=ClassificationLabel(**exc_data.get("e1_opinion_pieces", {})),
+                e2_non_research=ClassificationLabel(**exc_data.get("e2_non_research", {})),
+                e3_no_implementation=ClassificationLabel(**exc_data.get("e3_no_implementation", {})),
+                e4_duplicates=ClassificationLabel(**exc_data.get("e4_duplicates", {})),
+                e5_no_fulltext=ClassificationLabel(**exc_data.get("e5_no_fulltext", {})),
+                e6_no_blockchain=ClassificationLabel(**exc_data.get("e6_no_blockchain", {})),
+                e7_no_scientific_data=ClassificationLabel(**exc_data.get("e7_no_scientific_data", {})),
+            )
+        
+        # Keywords (optional)
+        keywords = None
+        kw_data = cls_data.get("keywords", {})
+        if kw_data:
+            keywords = KeywordsConfig(**kw_data)
         
         return ClassificationConfig(
             model=model,
-            labels=labels,
+            research_question=research_question,
             relevance=relevance,
+            sub_questions=sub_questions,
+            inclusion_criteria=inclusion_criteria,
+            exclusion_criteria=exclusion_criteria,
+            keywords=keywords,
             thresholds=thresholds,
             stages=stages,
         )

@@ -42,10 +42,14 @@ class LoadConfigRequest(BaseModel):
 
 class UpdateClassificationRequest(BaseModel):
     """Request model for updating classification configuration."""
-    labels: Optional[dict] = None
+    research_question: Optional[str] = None
     relevance: Optional[dict] = None
     thresholds: Optional[dict] = None
     model: Optional[dict] = None
+    sub_questions: Optional[dict] = None
+    inclusion_criteria: Optional[dict] = None
+    exclusion_criteria: Optional[dict] = None
+    keywords: Optional[dict] = None
 
 
 class ImportRequest(BaseModel):
@@ -150,7 +154,7 @@ async def get_classification_config():
 
 @app.put("/config/classification")
 async def update_classification_config(request: UpdateClassificationRequest):
-    """Update classification configuration (PICOC, thresholds, etc.)."""
+    """Update classification configuration (research question, sub-questions, criteria, thresholds, etc.)."""
     import yaml
     
     config_path = Path("config/classification.yaml")
@@ -160,25 +164,34 @@ async def update_classification_config(request: UpdateClassificationRequest):
     with open(config_path) as f:
         current_config = yaml.safe_load(f)
     
-    if request.labels is not None:
-        if "labels" not in current_config:
-            current_config["labels"] = {}
-        current_config["labels"].update(request.labels)
+    if "classification" not in current_config:
+        current_config["classification"] = {}
+    
+    cls_config = current_config["classification"]
+    
+    if request.research_question is not None:
+        cls_config["research_question"] = request.research_question
     
     if request.relevance is not None:
-        if "relevance" not in current_config:
-            current_config["relevance"] = {}
-        current_config["relevance"].update(request.relevance)
+        cls_config["relevance"] = request.relevance
     
     if request.thresholds is not None:
-        if "thresholds" not in current_config:
-            current_config["thresholds"] = {}
-        current_config["thresholds"].update(request.thresholds)
+        cls_config["thresholds"] = request.thresholds
     
     if request.model is not None:
-        if "model" not in current_config:
-            current_config["model"] = {}
-        current_config["model"].update(request.model)
+        cls_config["model"] = request.model
+    
+    if request.sub_questions is not None:
+        cls_config["sub_questions"] = request.sub_questions
+    
+    if request.inclusion_criteria is not None:
+        cls_config["inclusion_criteria"] = request.inclusion_criteria
+    
+    if request.exclusion_criteria is not None:
+        cls_config["exclusion_criteria"] = request.exclusion_criteria
+    
+    if request.keywords is not None:
+        cls_config["keywords"] = request.keywords
     
     with open(config_path, "w") as f:
         yaml.dump(current_config, f, default_flow_style=False)
@@ -189,10 +202,14 @@ async def update_classification_config(request: UpdateClassificationRequest):
         "status": "updated",
         "config_path": str(config_path),
         "updated_fields": {
-            "labels": request.labels is not None,
+            "research_question": request.research_question is not None,
             "relevance": request.relevance is not None,
             "thresholds": request.thresholds is not None,
             "model": request.model is not None,
+            "sub_questions": request.sub_questions is not None,
+            "inclusion_criteria": request.inclusion_criteria is not None,
+            "exclusion_criteria": request.exclusion_criteria is not None,
+            "keywords": request.keywords is not None,
         }
     }
 
