@@ -168,7 +168,12 @@ async def import_papers(request: ImportRequest):
 
 @app.post("/papers/import-directory")
 async def import_directory(request: ImportDirectoryRequest):
-    """Import all supported files from a directory."""
+    """
+    Import all supported files from a directory.
+    
+    Automatically detects source (wos, ieee, acm, scopus) and format (bibtex, csv)
+    based on filename patterns.
+    """
     import os
     import re
     
