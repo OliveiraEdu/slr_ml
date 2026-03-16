@@ -12,14 +12,14 @@ help:
 	@echo "  make clean      Clean up containers and volumes"
 
 install:
-	pip install -r requirements.txt
-	pip install torch transformers ctranslate2
+	pip3 install -r requirements.txt || python3 -m pip install -r requirements.txt
+	pip3 install torch transformers ctranslate2 || python3 -m pip install torch transformers ctranslate2
 
 convert:
-	python scripts/convert_model.py --model allenai/scibert_scivocab_uncased --output ./models/scibert-ct2
+	python3 scripts/convert_model.py --model allenai/scibert_scivocab_uncased --output ./models/scibert-ct2
 
 convert-download:
-	python scripts/convert_model.py --model allenai/scibert_scivocab_uncased --download-only
+	python3 scripts/convert_model.py --model allenai/scibert_scivocab_uncased --download-only
 
 build:
 	docker-compose build
@@ -41,4 +41,4 @@ run-api:
 	uvicorn src.api.main:app --reload --port 8000
 
 test-classifier:
-	python -c "from src.ml.classifier import SciBERTClassifier, BackendType; c = SciBERTClassifier(backend='pytorch'); print('OK')"
+	python3 -c "from src.ml.classifier import SciBERTClassifier, BackendType; c = SciBERTClassifier(backend='pytorch'); print('OK')"
