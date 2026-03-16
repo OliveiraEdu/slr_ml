@@ -25,8 +25,7 @@ ENV TRANSFORMERS_CACHE=/app/models
 
 # Build with: docker build -f Dockerfile.ml -t slr-ml .
 # Run with converted model in ./models/
-CMD ["python", "-c", "
-from src.ml.classifier import SciBERTClassifier, BackendType
-c = SciBERTClassifier(backend=BackendType.CTRANSFORMATE2)
-print('SciBERT with ctranslate2 ready')
-"]
+CMD python -c "\
+from src.ml.classifier import SciBERTClassifier, BackendType; \
+c = SciBERTClassifier(backend=BackendType.CTRANSFORMATE2); \
+print('SciBERT with ctranslate2 ready')"
