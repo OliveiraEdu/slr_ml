@@ -46,6 +46,11 @@ class ImportRequest(BaseModel):
     format: str = "bibtex"
 
 
+class ImportDirectoryRequest(BaseModel):
+    directory: str = "inputs"
+    auto_detect: bool = True
+
+
 class ArxivRequest(BaseModel):
     query: str
     max_results: int = 50
@@ -159,6 +164,99 @@ async def import_papers(request: ImportRequest):
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/papers/import-directory")
+async def import_directory(request: ImportDirectoryRequest):
+    """Import all supported files from a directory."""
+    import os
+    import re
+    
+    SOURCE_PATTERNS = {
+        "wos": [r"wos.*\.bib", r"wos.*\.csv"],
+        "ieee": [r"ieee.*\.bib", r"ieee.*\.csv"],
+        "acm": [r"acm.*\.bib", r"acm.*\.csv"],
+        "scopus": [r"scopus.*\.bib", r"scopus.*\.csv"],
+    }
+    
+    SOURCE_MAPPING = {
+        "bib": "bibtex",
+        "csv": "csv",
+    }
+    
+    dir_path = Path(request.directory)
+    if not dir_path.exists():
+        raise HTTPException(status_code=404, detail=f"Directory not found: {request.directory}")
+    
+    if not dir_path.is_dir():
+        raise HTTPException(status_code=400, detail=f"Not a directory: {request.directory}")
+    
+    all_papers = []
+    files_imported = []
+    errors = []
+    
+    for file_path in dir_path.iterdir():
+        if not file_path.is_file():
+            continue
+        
+        filename = file_path.name.lower()
+        ext = file_path.suffix.lower().lstrip(".")
+        
+        detected_source = None
+        for source, patterns in SOURCE_PATTERNS.items():
+            for pattern in patterns:
+                if re.match(pattern, filename):
+                    detected_source = source
+                    break
+            if detected_source:
+                break
+        
+        if not detected_source:
+            continue
+        
+        try:
+            file_format = SOURCE_MAPPING.get(ext, ext)
+            
+            if file_format == "bibtex":
+                loader = BibtexLoader()
+                papers = loader.load_file(str(file_path), SourceName(detected_source))
+            elif file_format == "csv":
+                loader = CsvLoader()
+                papers = loader.load_file(str(file_path), SourceName(detected_source), format_type=detected_source)
+            else:
+                errors.append(f"{file_path.name}: unsupported format {file_format}")
+                continue
+            
+            all_papers.extend(papers)
+            files_imported.append({
+                "file": file_path.name,
+                "source": detected_source,
+                "format": file_format,
+                "count": len(papers),
+            })
+            
+        except Exception as e:
+            errors.append(f"{file_path.name}: {str(e)}")
+    
+    if not files_imported:
+        return {
+            "status": "no_files",
+            "message": "No supported files found in directory",
+            "directory": request.directory,
+            "supported_patterns": SOURCE_PATTERNS,
+        }
+    
+    app_state["papers"].extend(all_papers)
+    
+    return {
+        "status": "imported",
+        "directory": request.directory,
+        "files_imported": files_imported,
+        "total_files": len(files_imported),
+        "total_papers": len(all_papers),
+        "total_papers_in_store": len(app_state["papers"]),
+        "errors": errors if errors else None,
+    }
 
 
 @app.post("/papers/arxiv")
