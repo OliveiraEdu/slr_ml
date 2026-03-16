@@ -1,0 +1,55 @@
+# Classification Configuration
+# PICOC criteria and ML classification settings
+
+classification:
+  # Model configuration
+  model:
+    name: "allenai/scibert_scivocab_uncased"
+    approach: "zero-shot"  # zero-shot, fine-tuned
+    device: "auto"  # auto, cpu, cuda
+
+  # PICOC Labels
+  labels:
+    population:
+      enabled: true
+      prompt: "This paper studies the following population: {text}"
+      description: "The target population or subjects being studied"
+    intervention:
+      enabled: true
+      prompt: "This paper evaluates the following intervention: {text}"
+      description: "The intervention or exposure being investigated"
+    comparison:
+      enabled: true
+      prompt: "This paper compares: {text}"
+      description: "The comparison or control group"
+    outcomes:
+      enabled: true
+      prompt: "This paper measures outcomes: {text}"
+      description: "The outcome measures or results"
+    context:
+      enabled: true
+      prompt: "The context is: {text}"
+      description: "The setting or context of the study"
+
+  # Binary relevance classification
+  relevance:
+    enabled: true
+    include_prompt: "This paper is relevant to the research question and should be included in the systematic review"
+    exclude_prompt: "This paper is not relevant to the research question and should be excluded from the systematic review"
+    threshold: 0.5
+
+  # Thresholds for screening decisions
+  thresholds:
+    include: 0.6    # Minimum score to include
+    exclude: 0.3    # Maximum score to exclude
+    uncertain: 0.3  # Range for manual review (0.3-0.6)
+    confidence: 0.15  # Minimum confidence gap for automatic decision
+
+  # Screening stages
+  stages:
+    title_abstract:
+      enabled: true
+      min_text_length: 50
+    full_text:
+      enabled: true
+      min_text_length: 200

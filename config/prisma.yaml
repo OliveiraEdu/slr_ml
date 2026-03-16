@@ -1,0 +1,57 @@
+# PRISMA 2020 Configuration
+# Settings for PRISMA flow diagram generation and reporting
+
+prisma:
+  # Review type
+  review_type: "original"  # original or update
+
+  # Exclusion reasons for title/abstract screening
+  title_abstract_exclusion_reasons:
+    - "Not relevant to research question"
+    - "Wrong study design"
+    - "Wrong population"
+    - "Wrong intervention"
+    - "No outcomes of interest"
+    - "Insufficient information"
+    - "Duplicate"
+    - "Not in English"
+    - "Conference abstract only"
+    - "Other"
+
+  # Exclusion reasons for full-text screening
+  full_text_exclusion_reasons:
+    - "Full text not available"
+    - "Not relevant to research question"
+    - "Wrong study design"
+    - "Wrong population"
+    - "Wrong intervention"
+    - "No outcomes of interest"
+    - "Insufficient data/results"
+    - "Duplicate publication"
+    - "Wrong context"
+    - "Other"
+
+  # Inclusion criteria
+  inclusion_criteria:
+    - "Relevant to PICOC"
+    - "Primary empirical study"
+    - "Peer-reviewed"
+    - "Published in included timeframe"
+
+  # Report settings
+  report:
+    include_flow_diagram: true
+    include_table_studies: true
+    include_summary_statistics: true
+
+  # Output formats
+  output:
+    flow_diagram: "json"  # json, csv
+    statistics: "json"
+    export_path: "outputs/prisma"
+
+  # Reviewers (for audit trail)
+  reviewers:
+    primary: ""
+    secondary: ""
+    conflict_resolution: ""

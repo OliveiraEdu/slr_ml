@@ -1,0 +1,41 @@
+# Data Sources Configuration
+# Configure input files and arXiv queries for the SLR engine
+
+sources:
+  # Web of Science - user-provided files
+  wos:
+    enabled: true
+    file_path: "inputs/wos.bib"  # or .csv
+    format: "bibtex"  # bibtex or csv
+
+  # IEEE Xplore - user-provided files
+  ieee:
+    enabled: true
+    file_path: "inputs/ieee.csv"
+    format: "csv"  # bibtex or csv
+
+  # ACM Digital Library - user-provided files
+  acm:
+    enabled: true
+    file_path: "inputs/acm.bib"
+    format: "bibtex"  # bibtex or csv
+
+  # Scopus - user-provided files
+  scopus:
+    enabled: true
+    file_path: "inputs/scopus1.csv"
+    format: "csv"  # csv or bibtex
+
+  # arXiv - API queries
+  arxiv:
+    enabled: false
+    max_results: 100
+    queries:
+      - query: "machine learning"
+        max_results: 50
+      - query: "deep learning"
+        max_results: 50
+    # Optional: date filters
+    # date_from: "2020-01-01"
+    # date_to: "2024-12-31"
+    # categories: ["cs.AI", "cs.LG", "stat.ML"]
