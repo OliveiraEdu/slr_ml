@@ -7,7 +7,9 @@ A configuration-driven systematic literature review engine that automates paper 
 - **Multi-source import**: BibTeX and CSV files from WoS, IEEE Xplore, ACM, and Scopus
 - **arXiv integration**: Real-time API queries for preprints
 - **ML-powered screening**: SciBERT zero-shot classification using PICOC criteria
-- **PRISMA 2020 compliance**: Automated flow diagram generation and reporting
+- **PRISMA 2020 compliance**: Automated flow diagram generation and full report generation
+- **Automatic extraction**: Study characteristics (blockchain platform, research focus, storage)
+- **Quality assessment**: MMAT-based quality scoring for included studies
 - **Configuration-driven**: All settings via YAML files - no hardcoded values
 - **REST API**: FastAPI with OpenAPI/Swagger documentation
 
@@ -51,10 +53,12 @@ Open `http://localhost:8000/docs` for Swagger UI.
 
 All configuration is managed through YAML files in the `config/` directory:
 
-- `sources.yaml` - Data sources, file paths, and arXiv queries
-- `classification.yaml` - PICOC labels, prompts, and classification thresholds
-- `model.yaml` - SciBERT model configuration
-- `prisma.yaml` - PRISMA reporting settings
+| File | Purpose |
+|------|---------|
+| `sources.yaml` | Data sources, file paths, and arXiv queries |
+| `classification.yaml` | PICOC labels, prompts, and classification thresholds |
+| `prisma.yaml` | PRISMA reporting settings |
+| `extraction.yaml` | Extraction keywords and MMAT quality criteria |
 
 ## Pipeline
 
@@ -63,30 +67,120 @@ All configuration is managed through YAML files in the `config/` directory:
 │   YAML      │───▶│   Loader     │───▶│  Deduplication   │
 │   Configs   │    │  (BibTeX/CSV)│    │  (DOI + Title)  │
 └─────────────┘    └──────────────┘    └────────┬─────────┘
-                                                │
+                                               │
 ┌─────────────┐    ┌──────────────┐            ▼
 │   arXiv     │───▶│   API Client  │───▶  ┌─────────────┐
 │   Query     │    │               │      │  Unified    │
 └─────────────┘    └──────────────┘      │  Paper DB   │
                                           └──────┬────────┘
                                                  │
-                           ┌─────────────────────┴─────────────────────┐
-                           │         SCREENING STAGE (PRISMA)           │
-                           │  Title/Abstract → Full-text → INCLUDED    │
-                           └────────────────────────────────────────────┘
+                            ┌─────────────────────┴─────────────────────┐
+                            │         SCREENING STAGE (PRISMA)           │
+                            │  Title/Abstract → Full-text → INCLUDED    │
+                            └────────────────────────────────────────────┘
+                                              │
+                                              ▼
+                            ┌─────────────────────────────────────────────┐
+                            │         EXTRACTION & QUALITY               │
+                            │  Study Characteristics → MMAT Assessment   │
+                            └────────────────────────────────────────────┘
+                                              │
+                                              ▼
+                            ┌─────────────────────────────────────────────┐
+                            │         REPORT GENERATION                   │
+                            │  PRISMA Flow → Markdown Report             │
+                            └────────────────────────────────────────────┘
 ```
 
 ## API Endpoints
 
+### Core Endpoints
+
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/health` | GET | Health check |
+| `/health` | GET | Health check (API + ml-worker) |
+| `/` | GET | API info |
+
+### Configuration
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
 | `/config/load` | POST | Load YAML configs |
-| `/papers/import` | POST | Import user files |
+| `/config/status` | GET | Get config status |
+| `/config/classification` | GET | Get classification config |
+| `/config/classification` | PUT | Update classification config |
+
+### Papers
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/papers/import` | POST | Import from file |
+| `/papers/import-directory` | POST | Import all files from directory |
 | `/papers/arxiv` | POST | Query arXiv API |
+| `/papers/list` | GET | List loaded papers |
 | `/papers/dedupe` | POST | Run deduplication |
+| `/papers/clear` | POST | Clear all papers |
+
+### Screening
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
 | `/screening/run` | POST | Run ML screening |
-| `/prisma/flow` | GET | Generate PRISMA flow data |
+| `/screening/results` | GET | Get screening results |
+| `/screening/rank` | GET | Rank papers by relevance |
+
+### PRISMA & Reporting
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/prisma/flow` | GET | Get PRISMA flow data |
+| `/prisma/export` | GET | Export flow diagram (JSON/CSV) |
+| `/prisma/extract` | POST | Extract study data & quality |
+| `/prisma/report` | GET | Generate full PRISMA report (Markdown/JSON) |
+| `/prisma/extraction` | GET | Get extraction data |
+| `/prisma/quality` | GET | Get quality assessment data |
+
+## Usage Example
+
+### Full Pipeline via API
+
+```bash
+# 1. Load configuration
+curl -X POST http://localhost:8000/config/load -H "Content-Type: application/json" -d '{"config_dir": "config"}'
+
+# 2. Import papers
+curl -X POST http://localhost:8000/papers/import-directory -H "Content-Type: application/json" -d '{"directory": "inputs"}'
+
+# 3. Run deduplication
+curl -X POST http://localhost:8000/papers/dedupe -H "Content-Type: application/json" -d '{}'
+
+# 4. Run screening
+curl -X POST http://localhost:8000/screening/run -H "Content-Type: application/json" -d '{}'
+
+# 5. Extract data and quality assessment
+curl -X POST http://localhost:8000/prisma/extract
+
+# 6. Generate full report
+curl http://localhost:8000/prisma/report?format=markdown
+```
+
+### Using the Pipeline Script
+
+```bash
+./run_pipeline.sh
+```
+
+## Report Sections
+
+The generated PRISMA 2020 report includes:
+
+1. **Executive Summary** - Overview of the review
+2. **PRISMA Flow Diagram** - Visual flowchart with statistics
+3. **Methods** - Search strategy and eligibility criteria
+4. **Study Characteristics** - Year distribution, sources, research focus, platforms
+5. **Quality Assessment** - MMAT ratings and scores
+6. **Included Studies** - Table with study details
+7. **Limitations** - Review limitations
 
 ## License
 

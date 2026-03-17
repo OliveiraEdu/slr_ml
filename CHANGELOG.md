@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-03-17
+
+### Added
+- **Health Check Enhancement**: `/health` endpoint now checks both API and ml-worker services
+- **PRISMA 2020 Full Report Generation**: Complete markdown report with all sections
+- **Study Data Extraction**: Automatic extraction of research focus, blockchain platform, storage integration, permission model
+- **Quality Assessment (MMAT)**: Automatic quality scoring using Mixed Methods Appraisal Tool criteria
+- **Docker Support**: ml-worker container with health endpoint on port 8001
+
+### New API Endpoints
+- `POST /prisma/extract` - Run extraction and quality assessment on included studies
+- `GET /prisma/report` - Generate full PRISMA 2020 markdown report
+- `GET /prisma/extraction` - Get extraction data
+- `GET /prisma/quality` - Get quality assessment data
+
+### New Configuration
+- `config/extraction.yaml` - Extraction keywords and MMAT criteria (configurable)
+
+### Implementation
+- `src/pipeline/extraction.py`:
+  - `ExtractionExtractor` class for automatic study characteristic extraction
+  - `QualityAssessor` class for MMAT-based quality assessment
+- `src/pipeline/prisma_generator.py`:
+  - `generate_markdown_report()` method with full PRISMA 2020 sections
+  - Mermaid flowchart generation
+
+### Verified Working
+- Full pipeline tested: 8,934 papers imported, 5,736 after dedup, 1,161 included
+- Report generated with all sections: Flow diagram, Methods, Study Characteristics, Quality Assessment, Included Studies
+
 ## [0.1.0] - 2026-03-16
 
 ### Added
