@@ -21,6 +21,7 @@ from src.pipeline.screening import ScreeningPipeline, ScreeningManager
 from src.pipeline.prisma_generator import PrismaGenerator
 from src.pipeline.extraction import ExtractionExtractor, QualityAssessor
 from src.ml.classifier import SciBERTClassifier, BackendType
+from src.connectors.doi_connector import DOIMetadataConnector
 
 
 app = FastAPI(
@@ -739,3 +740,83 @@ async def clear_papers():
     app_state["papers"] = []
     app_state["results"] = []
     return {"status": "cleared"}
+
+
+@app.post("/papers/enrich")
+async def enrich_papers_with_doi(
+    skip_existing: bool = True,
+    email: Optional[str] = None,
+):
+    """Enrich paper metadata using CrossRef and DataCite APIs.
+
+    Queries DOI metadata to get citation counts, references, publication dates,
+    and other metadata. Uses free tier rate limits (10 req/sec).
+
+    Args:
+        skip_existing: Skip papers that already have citation counts
+        email: Optional email for CrossRef (higher rate limits: 50/sec)
+    """
+    papers = app_state.get("papers", [])
+    papers_with_doi = [p for p in papers if p.doi]
+
+    if not papers_with_doi:
+        return {
+            "status": "no_dois",
+            "message": "No papers with DOIs found",
+            "total_papers": len(papers),
+            "papers_with_doi": 0,
+        }
+
+    connector = DOIMetadataConnector(email=email, rate_limit=0.1)
+    enriched_papers = connector.batch_enrich(papers, skip_existing=skip_existing)
+
+    total_citations = sum(p.citations for p in enriched_papers)
+    enriched_count = sum(1 for p in enriched_papers if p.raw_metadata.get("doi_source"))
+
+    app_state["papers"] = enriched_papers
+
+    return {
+        "status": "enriched",
+        "total_papers": len(enriched_papers),
+        "papers_with_doi": len(papers_with_doi),
+        "newly_enriched": enriched_count,
+        "total_citations": total_citations,
+    }
+
+
+@app.get("/papers/enrich/{paper_id}")
+async def enrich_single_paper(
+    paper_id: str,
+    email: Optional[str] = None,
+):
+    """Enrich a single paper by ID using CrossRef/DataCite."""
+    papers = app_state.get("papers", [])
+    paper = next((p for p in papers if p.id == paper_id), None)
+
+    if not paper:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    if not paper.doi:
+        return {
+            "status": "no_doi",
+            "message": "Paper has no DOI",
+            "paper_id": paper_id,
+        }
+
+    connector = DOIMetadataConnector(email=email, rate_limit=0.1)
+    enriched_paper = connector.enrich_paper(paper)
+
+    for i, p in enumerate(papers):
+        if p.id == paper_id:
+            papers[i] = enriched_paper
+            break
+
+    return {
+        "status": "enriched",
+        "paper_id": paper_id,
+        "doi": enriched_paper.doi,
+        "citations": enriched_paper.citations,
+        "publisher": enriched_paper.raw_metadata.get("publisher"),
+        "publication_date": enriched_paper.raw_metadata.get("publication_date"),
+        "source": enriched_paper.raw_metadata.get("doi_source"),
+    }

@@ -10,6 +10,7 @@ A configuration-driven systematic literature review engine that automates paper 
 - **PRISMA 2020 compliance**: Automated flow diagram generation and full report generation
 - **Automatic extraction**: Study characteristics (blockchain platform, research focus, storage)
 - **Quality assessment**: MMAT-based quality scoring for included studies
+- **DOI enrichment**: CrossRef and DataCite API integration for citation counts and metadata
 - **Configuration-driven**: All settings via YAML files - no hardcoded values
 - **REST API**: FastAPI with OpenAPI/Swagger documentation
 
@@ -59,6 +60,7 @@ All configuration is managed through YAML files in the `config/` directory:
 | `classification.yaml` | PICOC labels, prompts, and classification thresholds |
 | `prisma.yaml` | PRISMA reporting settings |
 | `extraction.yaml` | Extraction keywords and MMAT quality criteria |
+| `convert.yaml` | Markdown to LaTeX converter settings |
 
 ## Pipeline
 
@@ -86,10 +88,16 @@ All configuration is managed through YAML files in the `config/` directory:
                             └────────────────────────────────────────────┘
                                               │
                                               ▼
-                            ┌─────────────────────────────────────────────┐
-                            │         REPORT GENERATION                   │
-                            │  PRISMA Flow → Markdown Report             │
-                            └────────────────────────────────────────────┘
+                             ┌─────────────────────────────────────────────┐
+                             │         REPORT GENERATION                   │
+                             │  PRISMA Flow → Markdown Report             │
+                             └────────────────────────────────────────────┘
+                                               │
+                                               ▼
+                             ┌─────────────────────────────────────────────┐
+                             │         MARKDOWN TO LATEX                   │
+                             │  Convert reports to LaTeX for publication  │
+                             └─────────────────────────────────────────────┘
 ```
 
 ## API Endpoints
@@ -120,6 +128,8 @@ All configuration is managed through YAML files in the `config/` directory:
 | `/papers/list` | GET | List loaded papers |
 | `/papers/dedupe` | POST | Run deduplication |
 | `/papers/clear` | POST | Clear all papers |
+| `/papers/enrich` | POST | Enrich papers with DOI metadata (CrossRef/DataCite) |
+| `/papers/enrich/{paper_id}` | GET | Enrich single paper by ID |
 
 ### Screening
 
@@ -139,6 +149,74 @@ All configuration is managed through YAML files in the `config/` directory:
 | `/prisma/report` | GET | Generate full PRISMA report (Markdown/JSON) |
 | `/prisma/extraction` | GET | Get extraction data |
 | `/prisma/quality` | GET | Get quality assessment data |
+
+### Markdown to LaTeX Converter
+
+Convert PRISMA reports from Markdown to LaTeX for publication:
+
+```bash
+# Using config file (outputs to config/convert.yaml output.file)
+python scripts/md_to_latex.py outputs/prisma/report_latest.md
+
+# Override output file
+python scripts/md_to_latex.py outputs/prisma/report_latest.md -o outputs/prisma/report.tex
+
+# Ignore config, use CLI only
+python scripts/md_to_latex.py inputs/report.md -o outputs/custom.tex --no-config
+```
+
+**Configuration** (`config/convert.yaml`):
+
+```yaml
+output:
+  file: "outputs/prisma/report.tex"  # Target LaTeX file
+
+title: "Systematic Review Findings Report"
+
+options:
+  wrap_document: true   # Include LaTeX document structure
+  tables: true          # Convert tables
+  figures: true        # Convert images
+  mermaid: false       # Skip mermaid diagrams
+```
+
+**Supported conversions:**
+- Headers (all levels)
+- Bold and italic text
+- Ordered and unordered lists
+- Tables (to `table` + `tabular` environment)
+- Code blocks (to `verbatim`)
+- Images (to `figure`)
+- Links (as plain text)
+
+---
+
+## DOI Enrichment
+
+Enrich papers with metadata from CrossRef and DataCite APIs:
+
+```bash
+# Enrich all papers with DOIs
+curl -X POST http://localhost:8000/papers/enrich
+
+# Include email for higher rate limits (50/sec)
+curl -X POST "http://localhost:8000/papers/enrich?email=your@email.com"
+
+# Re-enrich papers even with existing citations
+curl -X POST "http://localhost:8000/papers/enrich?skip_existing=false"
+```
+
+**Rate Limits (free tier)**:
+- CrossRef: 10 requests/second (50 with email)
+- DataCite: 10 requests/second
+
+**Enriched data**:
+- Citation counts (`is-referenced-by-count`)
+- Reference list (`referenced_works`)
+- Publication date
+- Publisher
+- Authors (with ORCID)
+- Journal/container title
 
 ## Usage Example
 

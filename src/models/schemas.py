@@ -163,6 +163,11 @@ class Paper(BaseModel):
     citations: int = 0
     full_text: Optional[str] = None
     raw_metadata: dict = Field(default_factory=dict)
+    crossref_id: Optional[str] = None
+    datacite_id: Optional[str] = None
+    publisher: Optional[str] = None
+    publication_date: Optional[str] = None
+    referenced_works: list[str] = Field(default_factory=list)
 
 
 class ScreeningResult(BaseModel):

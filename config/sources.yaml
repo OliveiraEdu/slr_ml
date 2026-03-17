@@ -32,3 +32,15 @@ sources:
         max_results: 50
       - query: "scientific data provenance blockchain"
         max_results: 50
+
+  # DOI Metadata - CrossRef and DataCite APIs
+  # Used for enriching papers with citation counts, references, etc.
+  doi:
+    enabled: true
+    # Optional email for higher rate limits (50/sec vs 10/sec)
+    # Highly recommended for CrossRef: https://api.crossref.org/swagger-ui/index.html
+    email: ""
+    # Rate limit in seconds between requests (0.1 = 10/sec)
+    rate_limit: 0.1
+    # Skip papers that already have citation counts
+    skip_existing: true

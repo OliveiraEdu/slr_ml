@@ -10,7 +10,8 @@ This manual provides detailed instructions for using the PRISMA 2020 Systematic 
 4. [Pipeline Workflow](#pipeline-workflow)
 5. [API Endpoints Reference](#api-endpoints-reference)
 6. [Report Generation](#report-generation)
-7. [Troubleshooting](#troubleshooting)
+7. [Markdown to LaTeX Conversion](#markdown-to-latex-conversion)
+8. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -370,6 +371,87 @@ Reports are saved to `outputs/prisma/` with timestamp:
 outputs/prisma/report_20260317_090824.md
 outputs/prisma/flow_diagram_20260317_090824.json
 ```
+
+---
+
+## Markdown to LaTeX Conversion
+
+The engine includes a utility to convert generated Markdown reports to LaTeX for publication in academic journals.
+
+### Quick Start
+
+```bash
+python scripts/md_to_latex.py outputs/prisma/report_latest.md
+```
+
+This reads the configuration from `config/convert.yaml` and outputs to the configured path.
+
+### Configuration
+
+Edit `config/convert.yaml`:
+
+```yaml
+output:
+  file: "outputs/prisma/report.tex"  # Target LaTeX file path
+
+title: "Systematic Review Findings Report"
+
+options:
+  wrap_document: true   # Include full LaTeX document structure
+  tables: true          # Convert markdown tables to LaTeX
+  figures: true         # Convert images to figure environment
+  mermaid: false        # Skip mermaid diagrams (comment them out)
+```
+
+### CLI Options
+
+| Option | Description |
+|--------|-------------|
+| `input` | Input markdown file (required) |
+| `-o, --output` | Output LaTeX file (overrides config) |
+| `-c, --config` | Config file path (default: config/convert.yaml) |
+| `--no-config` | Ignore config file, use CLI args only |
+
+### Examples
+
+```bash
+# Using default config
+python scripts/md_to_latex.py outputs/prisma/report_latest.md
+
+# Specify output file
+python scripts/md_to_latex.py outputs/prisma/report_latest.md -o outputs/prisma/report.tex
+
+# Use custom config
+python scripts/md_to_latex.py inputs/custom_report.md -c config/my_convert.yaml
+
+# CLI only (no config file)
+python scripts/md_to_latex.py inputs/report.md -o outputs/custom.tex --no-config
+```
+
+### Supported Conversions
+
+| Markdown Element | LaTeX Output |
+|------------------|--------------|
+| `# Heading` | `\chapter{}` / `\section{}` |
+| `**bold**` | `\textbf{}` |
+| `*italic*` | `\textit{}` |
+| `- item` | `\item` (in `itemize`) |
+| `1. item` | `\item` (in `enumerate`) |
+| Table | `table` + `tabular` environment |
+| `` `code` `` | `\texttt{}` |
+| ```code block``` | `verbatim` environment |
+| `![alt](img.png)` | `figure` environment |
+| `[link](url)` | Plain text (link removed) |
+
+### Compiling LaTeX
+
+After conversion, compile the LaTeX file:
+
+```bash
+pdflatex outputs/prisma/report.tex
+```
+
+Or use your preferred LaTeX editor (Overleaf, TeX Shop, etc.).
 
 ---
 

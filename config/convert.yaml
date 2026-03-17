@@ -1,0 +1,24 @@
+# Markdown to LaTeX Converter Configuration
+# Used by scripts/md_to_latex.py
+
+# Output settings
+output:
+  # Target LaTeX file (optional, defaults to input name with .tex)
+  file: "outputs/prisma/report.tex"
+
+# Document settings
+title: "Systematic Review Findings Report"
+
+# Conversion options
+options:
+  # Wrap in full document structure (with \documentclass, etc.)
+  wrap_document: true
+  
+  # Include table environment
+  tables: true
+  
+  # Include figure environment for images
+  figures: true
+  
+  # Convert mermaid diagrams (currently commented out)
+  mermaid: false
