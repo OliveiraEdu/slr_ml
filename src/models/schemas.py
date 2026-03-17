@@ -199,3 +199,43 @@ class EngineState(BaseModel):
     screening_results: list[ScreeningResult] = Field(default_factory=list)
     prisma_flow: PrismaFlowData = Field(default_factory=PrismaFlowData)
     config_loaded: bool = False
+
+
+class ExtractionData(BaseModel):
+    study_id: str
+    paper_id: str
+    research_focus: Optional[str] = None
+    system_name: Optional[str] = None
+    blockchain_platform: Optional[str] = None
+    storage_integration: Optional[str] = None
+    permission_model: Optional[str] = None
+    provenance_model: Optional[str] = None
+    madmp_support: Optional[str] = None
+    evaluation_method: Optional[str] = None
+    key_findings: Optional[str] = None
+    limitations: Optional[str] = None
+    quality_score: Optional[float] = None
+
+
+class QualityRating(str, Enum):
+    EXCELLENT = "excellent"
+    GOOD = "good"
+    ACCEPTABLE = "acceptable"
+    POOR = "poor"
+    VERY_POOR = "very_poor"
+
+
+class MMATScore(BaseModel):
+    clear_research_questions: Optional[str] = None
+    appropriate_methodology: Optional[str] = None
+    rigorous_data_collection: Optional[str] = None
+    sound_analysis: Optional[str] = None
+    well_supported_conclusions: Optional[str] = None
+
+
+class QualityAssessment(BaseModel):
+    paper_id: str
+    mmat_score: Optional[MMATScore] = None
+    rating: Optional[QualityRating] = None
+    overall_score: Optional[float] = None
+    notes: Optional[str] = None

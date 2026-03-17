@@ -19,6 +19,7 @@ from src.connectors.arxiv_connector import ArxivConnector
 from src.pipeline.deduplication import Deduplicator
 from src.pipeline.screening import ScreeningPipeline, ScreeningManager
 from src.pipeline.prisma_generator import PrismaGenerator
+from src.pipeline.extraction import ExtractionExtractor, QualityAssessor
 from src.ml.classifier import SciBERTClassifier, BackendType
 
 
@@ -91,6 +92,8 @@ app_state = {
     "sources_config": None,
     "classification_config": None,
     "prisma_config": None,
+    "extraction_data": [],
+    "quality_data": [],
 }
 
 
@@ -101,8 +104,35 @@ async def root():
 
 @app.get("/health")
 async def health_check():
+    import httpx
+    
+    services = {
+        "api": {"status": "healthy", "url": "self"},
+        "ml_worker": {"status": "unhealthy", "url": "http://ml-worker:8001/health"},
+    }
+    
+    overall_healthy = True
+    
+    async with httpx.AsyncClient(timeout=5.0) as client:
+        for name, info in services.items():
+            if info["url"] == "self":
+                continue
+            try:
+                response = await client.get(info["url"])
+                if response.status_code == 200:
+                    services[name]["status"] = "healthy"
+                else:
+                    services[name]["status"] = "unhealthy"
+                    services[name]["error"] = f"HTTP {response.status_code}"
+                    overall_healthy = False
+            except Exception as e:
+                services[name]["status"] = "unhealthy"
+                services[name]["error"] = str(e)
+                overall_healthy = False
+    
     return {
-        "status": "healthy",
+        "status": "healthy" if overall_healthy else "degraded",
+        "services": services,
         "papers_loaded": len(app_state["papers"]),
         "config_loaded": app_state["config_loaded"],
     }
@@ -596,6 +626,110 @@ async def export_prisma_flow(format: str = Query("json", regex="^(json|csv)$")):
         "status": "exported",
         "format": format,
         "path": str(output_path),
+    }
+
+
+@app.post("/prisma/extract")
+async def run_extraction():
+    """Run extraction and quality assessment on included studies."""
+    included_papers = [
+        p for p in app_state["papers"]
+        if any(r.paper_id == p.id and r.decision == "include" for r in app_state["results"])
+    ]
+
+    if not included_papers:
+        return {
+            "status": "no_included",
+            "message": "No included papers found. Run screening first.",
+        }
+
+    extractor = ExtractionExtractor()
+    extraction_data = extractor.extract(included_papers)
+
+    assessor = QualityAssessor()
+    quality_data = assessor.assess(included_papers)
+
+    app_state["extraction_data"] = extraction_data
+    app_state["quality_data"] = quality_data
+
+    return {
+        "status": "extracted",
+        "papers_extracted": len(extraction_data),
+        "quality_assessed": len(quality_data),
+    }
+
+
+@app.get("/prisma/report")
+async def get_prisma_report(format: str = Query("markdown", regex="^(markdown|json)$")):
+    """Generate full PRISMA 2020 report."""
+    included_papers = [
+        p for p in app_state["papers"]
+        if any(r.paper_id == p.id and r.decision == "include" for r in app_state["results"])
+    ]
+
+    extraction_data = app_state.get("extraction_data", [])
+    quality_data = app_state.get("quality_data", [])
+
+    if not included_papers:
+        raise HTTPException(status_code=400, detail="No included papers found. Run screening first.")
+
+    generator = PrismaGenerator(app_state.get("prisma_config"))
+
+    if format == "json":
+        flow_data = generator.generate_flow_data(app_state["papers"], app_state["results"])
+        return {
+            "flow_data": flow_data.model_dump(),
+            "extraction_data": [e.model_dump() for e in extraction_data],
+            "quality_data": [q.model_dump() for q in quality_data],
+        }
+
+    markdown_report = generator.generate_markdown_report(
+        app_state["papers"],
+        app_state["results"],
+        included_papers,
+        extraction_data,
+        quality_data,
+    )
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = Path("outputs/prisma")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / f"report_{timestamp}.md"
+
+    with open(output_path, "w") as f:
+        f.write(markdown_report)
+
+    return {
+        "status": "generated",
+        "format": "markdown",
+        "report": markdown_report,
+        "path": str(output_path),
+    }
+
+
+@app.get("/prisma/extraction")
+async def get_extraction_data():
+    """Get extraction data for included studies."""
+    extraction_data = app_state.get("extraction_data", [])
+    if not extraction_data:
+        return {"status": "not_extracted", "message": "Run /prisma/extract first"}
+
+    return {
+        "total": len(extraction_data),
+        "data": [e.model_dump() for e in extraction_data],
+    }
+
+
+@app.get("/prisma/quality")
+async def get_quality_data():
+    """Get quality assessment data."""
+    quality_data = app_state.get("quality_data", [])
+    if not quality_data:
+        return {"status": "not_assessed", "message": "Run /prisma/extract first"}
+
+    return {
+        "total": len(quality_data),
+        "data": [q.model_dump() for q in quality_data],
     }
 
 

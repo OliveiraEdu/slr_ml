@@ -28,4 +28,16 @@ ENV TRANSFORMERS_CACHE=/app/models
 CMD python -c "\
 from src.ml.classifier import SciBERTClassifier, BackendType; \
 c = SciBERTClassifier(backend=BackendType.CTRANSFORMATE2); \
-print('SciBERT with ctranslate2 ready')"
+print('SciBERT with ctranslate2 ready'); \
+import http.server; \
+import socketserver; \
+class HealthHandler(http.server.BaseHTTPRequestHandler): \
+    def do_GET(self): \
+        self.send_response(200); \
+        self.send_header('Content-type', 'application/json'); \
+        self.end_headers(); \
+        self.wfile.write(b'{\"status\":\"healthy\"}'); \
+    def log_message(self, format, *args): \
+        pass; \
+with socketserver.TCPServer(('', 8001), HealthHandler) as httpd: \
+    httpd.serve_forever()"

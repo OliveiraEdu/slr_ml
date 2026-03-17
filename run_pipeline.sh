@@ -120,6 +120,38 @@ export_prisma() {
     fi
 }
 
+# Step 6: Extract study data
+extract_data() {
+    log_info "Step 6: Extracting study data and quality assessment..."
+    
+    RESPONSE=$(curl -s -X POST "$API_URL/prisma/extract")
+    
+    echo "$RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$RESPONSE"
+    
+    EXTRACTED=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('papers_extracted', 0))" 2>/dev/null || echo "0")
+    QUALITY=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('quality_assessed', 0))" 2>/dev/null || echo "0")
+    
+    log_info "Papers extracted: $EXTRACTED"
+    log_info "Quality assessed: $QUALITY"
+}
+
+# Step 7: Generate full PRISMA report
+generate_report() {
+    log_info "Step 7: Generating full PRISMA 2020 report..."
+    
+    RESPONSE=$(curl -s "$API_URL/prisma/report?format=markdown")
+    
+    PATH=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('path', ''))" 2>/dev/null || echo "")
+    
+    if [ -n "$PATH" ]; then
+        log_info "Report generated: $PATH"
+        echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('report', ''))" 2>/dev/null | head -50
+    else
+        log_error "Failed to generate report"
+        echo "$RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$RESPONSE"
+    fi
+}
+
 # Main pipeline
 main() {
     # Check API
@@ -145,6 +177,14 @@ main() {
     echo ""
     
     export_prisma
+    
+    echo ""
+    
+    extract_data
+    
+    echo ""
+    
+    generate_report
     
     echo ""
     echo "=========================================="

@@ -1,0 +1,108 @@
+# Extraction Configuration
+# Settings for automatic study data extraction and quality assessment
+
+extraction:
+  # Research focus keywords for classification
+  research_focus_keywords:
+    provenance:
+      - provenance
+      - lineage
+      - chain of custody
+      - tracking
+      - traceability
+      - verification
+    blockchain:
+      - blockchain
+      - ethereum
+      - hyperledger
+      - distributed ledger
+      - smart contract
+      - web3
+      - decentralized
+
+  # Blockchain platforms to detect
+  blockchain_platforms:
+    - Ethereum
+    - Hyperledger Fabric
+    - Hyperledger
+    - Hyperledger Iroha
+    - Corda
+    - Quorum
+    - Polygon
+    - Solana
+    - Multi-chain
+    - Not specified
+
+  # Storage integration types
+  storage_integration:
+    - IPFS
+    - IPFS + blockchain
+    - External DB
+    - Hybrid
+    - Not specified
+
+  # Permission models
+  permission_models:
+    - Permissioned
+    - Permissionless
+    - Hybrid
+    - Not specified
+
+  # Evaluation methods
+  evaluation_methods:
+    - Case study
+    - Experiment
+    - Simulation
+    - Benchmark
+    - Not clear
+    - None
+
+quality_assessment:
+  # MMAT criteria keywords for auto-assessment
+  mmat_criteria:
+    clear_research_questions:
+      - research question
+      - objective
+      - aim
+      - goal
+    appropriate_methodology:
+      - methodology
+      - method
+      - approach
+      - design
+    rigorous_data_collection:
+      - data collection
+      - dataset
+      - corpus
+      - sample
+    sound_analysis:
+      - analysis
+      - result
+      - finding
+      - evaluate
+    well_supported_conclusions:
+      - conclusion
+      - discussion
+      - implication
+
+  # Quality rating thresholds
+  rating_thresholds:
+    excellent: 0.8
+    good: 0.6
+    acceptable: 0.4
+    poor: 0.2
+    very_poor: 0.0
+
+report:
+  # Number of studies to show in the table (full list in CSV export)
+  table_preview_count: 100
+
+  # Sections to include in report
+  sections:
+    - executive_summary
+    - flow_diagram
+    - methods
+    - study_characteristics
+    - quality_assessment
+    - included_studies
+    - limitations
