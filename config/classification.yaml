@@ -109,27 +109,17 @@ classification:
   # Keywords for matching
   keywords:
     required:
-      - "maDMP"
-      - "machine-actionable"
-      - "data management plan"
       - "blockchain"
-      - "provenance"
-      - "scientific data"
-      - "research data"
-      - "verification"
+      - "data"
     optional:
-      - "permissioned"
+      - "provenance"
+      - "metadata"
+      - "management"
+      - "research"
+      - "scientific"
+      - "verification"
       - "Hyperledger"
       - "IPFS"
-      - "PROV-O"
-      - "RDA"
-      - "FAIR"
-      - "reproducibility"
-      - "metadata"
-      - "immutability"
-      - "lineage"
-      - "DMP"
-      - "open science"
 
   # Thresholds for screening decisions
   thresholds:

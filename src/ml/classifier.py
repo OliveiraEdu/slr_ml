@@ -4,7 +4,7 @@ import re
 from enum import Enum
 from typing import Optional
 
-from src.models.schemas import Paper, ScreeningResult
+from src.models.schemas import Paper, ScreeningResult, RankingWeights
 
 
 class BackendType(str, Enum):
@@ -24,12 +24,14 @@ class SciBERTClassifier:
         backend: BackendType = BackendType.AUTO,
         model_path: Optional[str] = None,
         keywords: Optional[dict] = None,
+        ranking_weights: Optional[RankingWeights] = None,
     ):
         self.model_name = model_name
         self.device = device
         self.backend = self._resolve_backend(backend)
         self.model_path = model_path
         self.keywords = keywords or {}
+        self.ranking_weights = ranking_weights or RankingWeights()
         self.tokenizer = None
         self.model = None
         self._torch = None
@@ -138,21 +140,55 @@ class SciBERTClassifier:
     ) -> ScreeningResult:
         """Classify paper relevance using zero-shot approach."""
         
-        # Use keyword-based if PyTorch not available
+        # Get relevance score based on backend
         if self.backend == BackendType.KEYWORD:
-            return self._classify_keyword(paper, threshold)
-        
-        if not self.model:
+            result = self._classify_keyword(paper, threshold)
+        elif not self.model:
             self.load()
-            
-        # If still no model, use keyword
-        if not self.model:
-            return self._classify_keyword(paper, threshold)
-
-        if self.backend == BackendType.CTRANSFORMATE2:
-            return self._classify_ctranslate2(paper, include_prompt, threshold)
+            if not self.model:
+                result = self._classify_keyword(paper, threshold)
+            elif self.backend == BackendType.CTRANSFORMATE2:
+                result = self._classify_ctranslate2(paper, include_prompt, threshold)
+            else:
+                result = self._classify_pytorch(paper, include_prompt, threshold)
+        elif self.backend == BackendType.CTRANSFORMATE2:
+            result = self._classify_ctranslate2(paper, include_prompt, threshold)
         else:
-            return self._classify_pytorch(paper, include_prompt, threshold)
+            result = self._classify_pytorch(paper, include_prompt, threshold)
+        
+        # Calculate citation and recency scores
+        citation_score = self._calculate_citation_score(paper)
+        recency_score = self._calculate_recency_score(paper)
+        
+        # Calculate composite score
+        w = self.ranking_weights
+        composite = (
+            result.relevance_score * w.relevance +
+            citation_score * w.citations +
+            recency_score * w.recency
+        )
+        
+        result.citation_score = citation_score
+        result.recency_score = recency_score
+        result.composite_score = composite
+        
+        return result
+    
+    def _calculate_citation_score(self, paper: Paper) -> float:
+        """Normalize citation count to 0-1 score."""
+        max_citations = 100  # Cap at 100 for normalization
+        citations = getattr(paper, 'citations', 0) or 0
+        return min(citations / max_citations, 1.0)
+    
+    def _calculate_recency_score(self, paper: Paper) -> float:
+        """Normalize year to 0-1 recency score."""
+        import datetime
+        current_year = datetime.datetime.now().year
+        min_year = current_year - 10  # Papers older than 10 years = 0
+        year = paper.year or 0
+        if year <= 0:
+            return 0.0
+        return max(0.0, min(1.0, (year - min_year) / (current_year - min_year)))
 
     def _classify_keyword(self, paper: Paper, threshold: float = 0.5) -> ScreeningResult:
         """Classify using keyword matching (fallback when ML not available)."""

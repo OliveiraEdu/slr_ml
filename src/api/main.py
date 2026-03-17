@@ -3,7 +3,7 @@ from typing import Optional
 from pathlib import Path
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Query
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -11,6 +11,7 @@ from src.models.config_loader import ConfigLoader
 from src.models.schemas import (
     Paper, PrismaFlowData, ScreeningResult, SourceName,
     SourcesConfig, ClassificationConfig, PrismaConfig,
+    RankingWeights,
 )
 from src.loaders.bibtex_loader import BibtexLoader
 from src.loaders.csv_loader import CsvLoader
@@ -18,7 +19,7 @@ from src.connectors.arxiv_connector import ArxivConnector
 from src.pipeline.deduplication import Deduplicator
 from src.pipeline.screening import ScreeningPipeline, ScreeningManager
 from src.pipeline.prisma_generator import PrismaGenerator
-from src.ml.classifier import SciBERTClassifier
+from src.ml.classifier import SciBERTClassifier, BackendType
 
 
 app = FastAPI(
@@ -403,7 +404,9 @@ async def list_papers(
 
 
 @app.post("/papers/dedupe")
-async def deduplicate_papers(request: DedupeRequest):
+async def deduplicate_papers(
+    request: DedupeRequest = Body(default=DedupeRequest()),
+):
     """Run deduplication on papers. Uses papers from app_state if none provided."""
     try:
         # Use papers from request or from app_state
@@ -434,7 +437,9 @@ async def deduplicate_papers(request: DedupeRequest):
 
 
 @app.post("/screening/run")
-async def run_screening(request: ScreenRequest):
+async def run_screening(
+    request: ScreenRequest = Body(default=ScreenRequest()),
+):
     """Run ML screening on papers. Falls back to keyword-based if PyTorch unavailable."""
     try:
         # Use papers from request or from app_state
@@ -454,10 +459,17 @@ async def run_screening(request: ScreenRequest):
                 "optional": app_state["classification_config"].keywords.optional or [],
             }
         
+        # Get ranking weights from config
+        ranking_weights = RankingWeights()
+        if app_state.get("classification_config") and app_state["classification_config"].ranking_weights:
+            ranking_weights = app_state["classification_config"].ranking_weights
+        
         classifier = SciBERTClassifier(
             model_name="allenai/scibert_scivocab_uncased",
             device="cpu",
+            backend=BackendType.KEYWORD,
             keywords=keywords,
+            ranking_weights=ranking_weights,
         )
 
         results = []
@@ -509,6 +521,47 @@ async def get_screening_results(
     return {
         "total": len(results),
         "results": [r.model_dump() for r in results[:limit]],
+    }
+
+
+@app.get("/screening/rank")
+async def rank_papers(
+    n: int = Query(50, ge=1, le=500, description="Number of top papers to return"),
+    decision: Optional[str] = Query(None, description="Filter by decision (include/exclude/uncertain)"),
+    sort_by: str = Query("composite", regex="^(composite|relevance|citations|recency)$", description="Sort by composite, relevance, citations, or recency"),
+):
+    """Get top N papers ranked by composite score (relevance + citations + recency)."""
+    results = app_state["results"]
+    papers = app_state["papers"]
+    
+    if decision:
+        results = [r for r in results if r.decision == decision]
+    
+    paper_map = {p.id: p for p in papers}
+    
+    ranked = []
+    for r in results:
+        p = paper_map.get(r.paper_id)
+        if p:
+            ranked.append({
+                "paper": p.model_dump(),
+                "result": r.model_dump(),
+            })
+    
+    if sort_by == "relevance":
+        ranked.sort(key=lambda x: x["result"]["relevance_score"], reverse=True)
+    elif sort_by == "citations":
+        ranked.sort(key=lambda x: x["result"]["citation_score"], reverse=True)
+    elif sort_by == "recency":
+        ranked.sort(key=lambda x: x["result"]["recency_score"], reverse=True)
+    else:
+        ranked.sort(key=lambda x: x["result"]["composite_score"], reverse=True)
+    
+    return {
+        "total": len(ranked),
+        "top_n": n,
+        "sort_by": sort_by,
+        "papers": ranked[:n],
     }
 
 

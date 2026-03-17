@@ -104,6 +104,12 @@ class Thresholds(BaseModel):
     confidence: float = 0.15
 
 
+class RankingWeights(BaseModel):
+    relevance: float = 0.5
+    citations: float = 0.3
+    recency: float = 0.2
+
+
 class ScreeningStage(BaseModel):
     enabled: bool = True
     min_text_length: int = 50
@@ -124,6 +130,7 @@ class ClassificationConfig(BaseModel):
     keywords: Optional[KeywordsConfig] = None
     thresholds: Thresholds = Field(default_factory=Thresholds)
     stages: ScreeningStages = Field(default_factory=ScreeningStages)
+    ranking_weights: RankingWeights = Field(default_factory=RankingWeights)
 
 
 class PrismaConfig(BaseModel):
@@ -153,6 +160,7 @@ class Paper(BaseModel):
     url: Optional[str] = None
     journal: Optional[str] = None
     keywords: list[str] = Field(default_factory=list)
+    citations: int = 0
     full_text: Optional[str] = None
     raw_metadata: dict = Field(default_factory=dict)
 
@@ -162,6 +170,9 @@ class ScreeningResult(BaseModel):
     stage: str
     relevance_score: float = 0.0
     relevance_label: str = "unclassified"
+    citation_score: float = 0.0
+    recency_score: float = 0.0
+    composite_score: float = 0.0
     picoc_scores: dict[str, float] = Field(default_factory=dict)
     decision: str = "pending"
     reason: Optional[str] = None
