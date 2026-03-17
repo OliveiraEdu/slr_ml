@@ -424,11 +424,20 @@ async def deduplicate_papers(request: DedupeRequest):
 
 @app.post("/screening/run")
 async def run_screening(request: ScreenRequest):
-    """Run ML screening on papers."""
+    """Run ML screening on papers. Falls back to keyword-based if PyTorch unavailable."""
     try:
+        # Load keywords from config if available
+        keywords = {}
+        if app_state.get("classification_config") and app_state["classification_config"].keywords:
+            keywords = {
+                "required": app_state["classification_config"].keywords.required or [],
+                "optional": app_state["classification_config"].keywords.optional or [],
+            }
+        
         classifier = SciBERTClassifier(
             model_name="allenai/scibert_scivocab_uncased",
             device="cpu",
+            keywords=keywords,
         )
 
         results = []
@@ -456,6 +465,7 @@ async def run_screening(request: ScreenRequest):
             "included": included,
             "excluded": excluded,
             "uncertain": uncertain,
+            "backend": classifier.backend.value if hasattr(classifier.backend, 'value') else str(classifier.backend),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
