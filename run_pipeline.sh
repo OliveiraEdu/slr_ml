@@ -54,10 +54,10 @@ import_papers() {
 deduplicate() {
     log_info "Step 2: Deduplicating papers..."
     
-    # Get all papers and deduplicate
+    # API uses papers from app_state if none provided
     RESPONSE=$(curl -s -X POST "$API_URL/papers/dedupe" \
         -H "Content-Type: application/json" \
-        -d '{"papers": []}')
+        -d '{}')
     
     echo "$RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$RESPONSE"
     
@@ -73,23 +73,10 @@ deduplicate() {
 run_screening() {
     log_info "Step 3: Running ML screening..."
     
-    # Get papers for screening
-    PAPERS=$(curl -s "$API_URL/papers/list?limit=1000")
-    
-    # Count papers
-    TOTAL=$(echo "$PAPERS" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('total', 0))" 2>/dev/null || echo "0")
-    
-    if [ "$TOTAL" -eq 0 ]; then
-        log_warn "No papers to screen"
-        return
-    fi
-    
-    log_info "Screening $TOTAL papers..."
-    
-    # Run screening with papers from API
+    # API uses papers from app_state - just call the endpoint
     RESPONSE=$(curl -s -X POST "$API_URL/screening/run" \
         -H "Content-Type: application/json" \
-        -d "{\"papers\": $(echo '$PAPERS' | python3 -c 'import sys,json; d=json.load(sys.stdin); import json; print(json.dumps(d.get(\"papers\", [])[:500]))')}")
+        -d '{}')
     
     echo "$RESPONSE" | python3 -m json.tool 2>/dev/null || echo "$RESPONSE"
     
