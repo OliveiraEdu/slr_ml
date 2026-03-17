@@ -72,11 +72,11 @@ class ArxivRequest(BaseModel):
 
 
 class DedupeRequest(BaseModel):
-    papers: list[Paper]
+    papers: Optional[list[Paper]] = None
 
 
 class ScreenRequest(BaseModel):
-    papers: list[Paper]
+    papers: Optional[list[Paper]] = None
     stage: str = "title_abstract"
     include_prompt: str = "This paper is relevant to the research question"
     exclude_prompt: str = "This paper is not relevant to the research question"
@@ -267,10 +267,10 @@ async def import_directory(request: ImportDirectoryRequest):
     import re
     
     SOURCE_PATTERNS = {
-        "wos": [r"wos.*\.bib", r"wos.*\.csv"],
+        "wos": [r"wos.*\.bib", r"wos.*\.csv", r"savedrecs.*\.bib"],
         "ieee": [r"ieee.*\.bib", r"ieee.*\.csv"],
         "acm": [r"acm.*\.bib", r"acm.*\.csv"],
-        "scopus": [r"scopus.*\.bib", r"scopus.*\.csv"],
+        "scopus": [r"scopus.*\.bib", r"scopus.*\.csv", r"export.*\.csv"],
     }
     
     SOURCE_MAPPING = {
@@ -404,12 +404,23 @@ async def list_papers(
 
 @app.post("/papers/dedupe")
 async def deduplicate_papers(request: DedupeRequest):
-    """Run deduplication on papers."""
+    """Run deduplication on papers. Uses papers from app_state if none provided."""
     try:
+        # Use papers from request or from app_state
+        papers_to_dedupe = request.papers if request.papers else app_state["papers"]
+        
+        if not papers_to_dedupe:
+            return {
+                "status": "no_papers",
+                "message": "No papers to deduplicate",
+            }
+        
         dedup = Deduplicator()
-        papers, report = dedup.deduplicate(request.papers)
+        papers, report = dedup.deduplicate(papers_to_dedupe)
 
-        app_state["papers"] = papers
+        # Update app_state with deduplicated papers
+        if not request.papers:
+            app_state["papers"] = papers
 
         return {
             "status": "deduplicated",
@@ -426,6 +437,15 @@ async def deduplicate_papers(request: DedupeRequest):
 async def run_screening(request: ScreenRequest):
     """Run ML screening on papers. Falls back to keyword-based if PyTorch unavailable."""
     try:
+        # Use papers from request or from app_state
+        papers_to_screen = request.papers if request.papers else app_state["papers"]
+        
+        if not papers_to_screen:
+            return {
+                "status": "no_papers",
+                "message": "No papers to screen",
+            }
+        
         # Load keywords from config if available
         keywords = {}
         if app_state.get("classification_config") and app_state["classification_config"].keywords:
@@ -441,7 +461,7 @@ async def run_screening(request: ScreenRequest):
         )
 
         results = []
-        for paper in request.papers:
+        for paper in papers_to_screen:
             result = classifier.classify_relevance(
                 paper=paper,
                 include_prompt=request.include_prompt,
@@ -450,7 +470,11 @@ async def run_screening(request: ScreenRequest):
             )
             results.append(result)
 
-        app_state["results"].extend(results)
+        # Update app_state results if using app_state papers
+        if not request.papers:
+            app_state["results"] = results
+        else:
+            app_state["results"].extend(results)
 
         included = sum(1 for r in results if r.decision == "include")
         excluded = sum(1 for r in results if r.decision == "exclude")
