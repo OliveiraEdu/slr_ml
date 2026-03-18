@@ -209,8 +209,9 @@ class SciBERTClassifier:
         
         text = self._prepare_text(paper)
         
+        # Tokenize prompt and text as a pair
         inputs = self.tokenizer(
-            [prompt],
+            prompt,
             text,
             return_tensors="pt",
             truncation=True,
