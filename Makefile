@@ -45,6 +45,11 @@ install-gpu:
 	pip3 install transformers huggingface-hub ctranslate2
 
 convert:
+	@echo "Installing dependencies for model conversion..."
+	pip3 install transformers huggingface-hub ctranslate2 2>/dev/null || \
+	python3 -m pip install transformers huggingface-hub ctranslate2 || \
+	echo "Warning: Could not install all dependencies"
+	@echo "Converting SciBERT model..."
 	python3 scripts/convert_model.py --model allenai/scibert_scivocab_uncased --output ./models/scibert-ct2
 
 convert-download:
