@@ -28,11 +28,12 @@ python-dotenv>=1.0.0
 tqdm>=4.66.0
 
 # ML - Optional backends (install based on needs)
-# For fast local inference:
-ctranslate2>=4.0
-# For full PyTorch support:
-torch>=2.1.0
-transformers>=4.35.0
+# Note: PyTorch is installed in Dockerfile.api for CPU inference
+# For fast local inference with ctranslate2:
+# ctranslate2>=4.0
+# For full PyTorch support (installed in Dockerfile):
+# torch>=2.1.0
+# transformers>=4.35.0
 
 # Testing
 pytest>=7.4.0
