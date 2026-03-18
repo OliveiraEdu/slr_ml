@@ -1,7 +1,10 @@
 """FastAPI application for the SLR Engine."""
-from typing import Optional
+import sys
 from pathlib import Path
+from typing import Optional
 from datetime import datetime
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
