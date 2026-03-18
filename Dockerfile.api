@@ -7,12 +7,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PyTorch with CUDA support (for RTX 3500 GPU)
-# Using latest available version for CUDA 12.1
-RUN pip install --no-cache-dir "torch==2.5.1+cu121" "torchvision" --index-url https://download.pytorch.org/whl/cu121
+# Install ctranslate2 for fast BERT inference (no PyTorch needed)
+# This avoids the CVE-2025-32434 issue entirely
+RUN pip install --no-cache-dir ctranslate2
 
-# Install latest transformers (fixes CVE-2025-32434)
-RUN pip install --no-cache-dir "transformers>=4.46.0" "safetensors"
+# Install transformers for tokenizer only
+RUN pip install --no-cache-dir transformers huggingface-hub
+
+# Optional: PyTorch with CUDA (uncomment if needed for other tasks)
+# RUN pip install --no-cache-dir "torch==2.5.1" "torchvision" --index-url https://download.pytorch.org/whl/cu121
 
 # Install transformers and other ML dependencies
 RUN pip install --no-cache-dir transformers huggingface-hub
