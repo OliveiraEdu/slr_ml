@@ -868,6 +868,7 @@ async def convert_md_to_latex(request: ConvertMarkdownRequest):
             output_dir=output_dir if request.extract_mermaid else None,
             base_filename=base_filename
         )
+        print(f"DEBUG: Converted latex length: {len(latex_content)}")
         
         if request.wrap_document:
             latex_content = wrap_in_document(latex_content, request.title)
