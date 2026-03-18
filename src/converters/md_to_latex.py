@@ -124,10 +124,93 @@ def _convert_lists(latex: str) -> str:
 
 def _convert_tables(latex: str) -> str:
     """Convert markdown tables to LaTeX format."""
-    table_pattern = re.compile(
-        r'((?:\|[^\n]*\|\n?)+)',
-        re.MULTILINE
-    )
+    lines = latex.split('\n')
+    result_lines = []
+    i = 0
+    
+    while i < len(lines):
+        line = lines[i]
+        if line.strip().startswith('|'):
+            table_lines = [line]
+            j = i + 1
+            while j < len(lines) and lines[j].strip().startswith('|'):
+                table_lines.append(lines[j])
+                j += 1
+            
+            if len(table_lines) >= 2:
+                table_text = '\n'.join(table_lines)
+                converted = _convert_single_table(table_text)
+                result_lines.append(converted)
+                i = j
+                continue
+        result_lines.append(line)
+        i += 1
+    
+    return '\n'.join(result_lines)
+
+
+def _convert_single_table(table_text: str) -> str:
+    """Convert a single markdown table to LaTeX."""
+    lines = table_text.strip().split('\n')
+    
+    separator_idx = None
+    for idx, line in enumerate(lines):
+        stripped = line.strip('|').replace('-', '').replace(':', '').replace(' ', '')
+        if not stripped:
+            separator_idx = idx
+            break
+    
+    if separator_idx is None or separator_idx == 0 or separator_idx >= len(lines) - 1:
+        return table_text
+    
+    header_lines = lines[:separator_idx]
+    body_lines = lines[separator_idx + 1:]
+    
+    alignments = _parse_alignments(lines[separator_idx])
+    
+    all_rows = []
+    for line in header_lines + body_lines:
+        cells = [c.strip() for c in line.strip('|').split('|') if c.strip()]
+        if cells:
+            all_rows.append(cells)
+    
+    if len(all_rows) < 2:
+        return table_text
+    
+    num_cols = len(all_rows[0])
+    col_spec = '|' + ''.join(alignments[:num_cols]) + '|'
+    
+    result = [f'\\begin{{table}}[htbp]']
+    result.append('\\centering')
+    result.append('\\caption{Table Title}')
+    result.append(f'\\begin{{tabular}}{{{col_spec}}}')
+    result.append('\\toprule')
+    result.append(' & '.join(all_rows[0]) + ' \\\\')
+    result.append('\\midrule')
+    for row in all_rows[1:]:
+        result.append(' & '.join(row) + ' \\\\')
+    result.append('\\bottomrule')
+    result.append('\\end{tabular}')
+    result.append('\\end{table}')
+    
+    return '\n'.join(result)
+
+
+def _parse_alignments(separator_line: str) -> list[str]:
+    """Parse column alignments from markdown separator."""
+    cells = separator_line.strip('|').split('|')
+    alignments = []
+    for cell in cells:
+        cell = cell.strip()
+        if cell.startswith(':') and cell.endswith(':'):
+            alignments.append('c')
+        elif cell.startswith(':'):
+            alignments.append('l')
+        elif cell.endswith(':'):
+            alignments.append('r')
+        else:
+            alignments.append('l')
+    return alignments
 
     def parse_alignments(separator_line: str) -> list[str]:
         """Parse column alignments from markdown separator."""
