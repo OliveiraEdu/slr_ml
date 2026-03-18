@@ -7,9 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PyTorch CPU-only (smaller, ~2GB vs ~7GB with CUDA)
+# Install PyTorch with CUDA support (for RTX 3500 GPU)
 # Using pre-built wheel from PyTorch index
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu121
 
 # Install transformers and other ML dependencies
 RUN pip install --no-cache-dir transformers huggingface-hub
@@ -22,6 +22,6 @@ COPY config/ ./config/
 
 EXPOSE 8000
 
-# Note: API uses PyTorch-based classification when available
+# Note: API uses PyTorch-based classification with GPU support
 # ML worker (Dockerfile.ml) handles SciBERT with ctranslate2
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

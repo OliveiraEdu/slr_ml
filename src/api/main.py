@@ -497,7 +497,7 @@ async def run_screening(
         
         classifier = SciBERTClassifier(
             model_name="allenai/scibert_scivocab_uncased",
-            device="cpu",
+            device="auto",
             backend=BackendType.AUTO,
             keywords=keywords,
             ranking_weights=ranking_weights,

@@ -11,6 +11,14 @@ services:
       - ./outputs:/app/outputs
     environment:
       - PYTHONUNBUFFERED=1
+      - CUDA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     # The API now waits for the worker to report as 'healthy' 
     # rather than just 'started'.
     depends_on:
