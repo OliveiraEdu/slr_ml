@@ -44,19 +44,18 @@ install-gpu:
 	pip3 install transformers huggingface-hub ctranslate2
 
 convert:
-	@echo "Installing dependencies for model conversion..."
-	@echo "Note: If you get 'externally-managed-environment' error, use --break-system-packages"
+	@echo "Downloading SciBERT model for local use..."
 	pip3 install torch --break-system-packages 2>/dev/null || \
 	python3 -m pip install torch --break-system-packages || \
 	echo "Warning: PyTorch not installed (needed for model conversion)"
-	pip3 install transformers huggingface-hub ctranslate2 --break-system-packages 2>/dev/null || \
-	python3 -m pip install transformers huggingface-hub ctranslate2 || \
+	pip3 install transformers huggingface-hub --break-system-packages 2>/dev/null || \
+	python3 -m pip install transformers huggingface-hub || \
 	echo "Warning: Could not install all dependencies"
-	@echo "Converting SciBERT model..."
-	python3 scripts/convert_model.py --model allenai/scibert_scivocab_uncased --output ./models/scibert-ct2
+	@echo "Downloading SciBERT model..."
+	python3 scripts/convert_model.py --model allenai/scibert_scivocab_uncased --output ./models/scibert
 
 convert-download:
-	python3 scripts/convert_model.py --model allenai/scibert_scivocab_uncased --download-only
+	python3 scripts/convert_model.py --model allenai/scibert_scivocab_uncased --output ./models/scibert
 
 build:
 	docker compose build
