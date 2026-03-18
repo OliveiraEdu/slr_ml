@@ -150,7 +150,8 @@ def _convert_tables(latex: str) -> str:
         
         separator_idx = None
         for i, line in enumerate(lines):
-            if re.match(r'[\|: -]+$', line):
+            stripped = line.strip('|').replace('-', '').replace(':', '').replace(' ', '')
+            if not stripped:
                 separator_idx = i
                 break
         
