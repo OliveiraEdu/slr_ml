@@ -44,18 +44,11 @@ class SciBERTClassifier:
         if backend != BackendType.AUTO:
             return backend
 
-        # Check if PyTorch is available (preferred for BERT)
+        # Check if PyTorch is available (required for BERT classification)
         try:
             import torch
             import transformers
             return BackendType.PYTORCH
-        except ImportError:
-            pass
-
-        # Check if ctranslate2 is available (for seq2seq models)
-        try:
-            import ctranslate2
-            return BackendType.CTRANSFORMATE2
         except ImportError:
             pass
 
@@ -73,37 +66,14 @@ class SciBERTClassifier:
             pass
 
     def _load_ctranslate2(self):
-        """Load model using ctranslate2 (fastest)."""
-        try:
-            import ctranslate2
-            self._ctranslate2 = ctranslate2
-        except ImportError:
-            print("ctranslate2 not available. Using keyword-based classification.")
-            self.backend = BackendType.KEYWORD
-            return
-
-        if self.model is None:
-            model_name_short = self.model_name.split('/')[-1]
-            possible_paths = [
-                self.model_path,
-                f"./models/{model_name_short}-ct2",
-                "./models/scibert-ct2",
-            ]
-            model_path = None
-            for path in possible_paths:
-                if path and os.path.exists(path):
-                    model_path = path
-                    break
-            
-            if not model_path:
-                print(f"Converted model not found. Tried: {possible_paths}. Using keyword-based classification.")
-                self.backend = BackendType.KEYWORD
-                return
-
-            self.model = self._ctranslate2.Transformer(model_path)
-            
-            from transformers import AutoTokenizer
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        """Load model using ctranslate2 (fastest).
+        
+        Note: ctranslate2 only supports seq2seq models (translation), not BERT.
+        This will fall back to keyword unless a compatible model is provided.
+        """
+        print("ctranslate2 does not support BERT classification. Using keyword-based classification.")
+        self.backend = BackendType.KEYWORD
+        return
 
     def _load_pytorch(self):
         """Load model using PyTorch/transformers."""
