@@ -251,6 +251,7 @@ class ConvertMarkdownRequest(BaseModel):
     file_path: Optional[str] = None
     title: str = "Document"
     wrap_document: bool = True
+    extract_mermaid: bool = True
 
 
 class ConvertMarkdownResponse(BaseModel):

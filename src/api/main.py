@@ -854,12 +854,20 @@ async def convert_md_to_latex(request: ConvertMarkdownRequest):
             if not path.exists():
                 raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
             markdown_content = path.read_text(encoding="utf-8")
+            output_dir = str(path.parent / "mermaid_diagrams")
+            base_filename = path.stem
         elif request.markdown:
             markdown_content = request.markdown
+            output_dir = "outputs/mermaid_diagrams"
+            base_filename = "diagram"
         else:
             raise HTTPException(status_code=400, detail="Either 'markdown' or 'file_path' must be provided")
         
-        latex_content = convert_markdown_to_latex(markdown_content)
+        latex_content = convert_markdown_to_latex(
+            markdown_content,
+            output_dir=output_dir if request.extract_mermaid else None,
+            base_filename=base_filename
+        )
         
         if request.wrap_document:
             latex_content = wrap_in_document(latex_content, request.title)

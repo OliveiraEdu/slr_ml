@@ -1,11 +1,41 @@
 """Markdown to LaTeX converter for PRISMA reports."""
+import os
 import re
+from pathlib import Path
 from typing import Optional
 
 
-def convert_markdown_to_latex(markdown_content: str) -> str:
-    """Convert markdown content to LaTeX format."""
+def convert_markdown_to_latex(
+    markdown_content: str,
+    output_dir: Optional[str] = None,
+    base_filename: str = "diagram"
+) -> str:
+    """Convert markdown content to LaTeX format.
+    
+    Args:
+        markdown_content: The markdown text to convert
+        output_dir: Directory to save extracted mermaid diagrams (if None, no extraction)
+        base_filename: Base name for mermaid diagram files
+    """
     latex = markdown_content
+    diagram_count = [0]
+
+    def extract_mermaid(match):
+        diagram_content = match.group(1).strip()
+        diagram_count[0] += 1
+        diagram_name = f"{base_filename}_{diagram_count[0]:03d}.mermaid"
+        
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+            diagram_path = os.path.join(output_dir, diagram_name)
+            with open(diagram_path, 'w') as f:
+                f.write(diagram_content)
+            caption = f"Mermaid diagram {diagram_count[0]}"
+            return f'\\begin{{figure}}[htbp]\n\\centering\n\\textbf{{{caption}}}\n\\begin{{verbatim}}\n{diagram_content}\\end{{verbatim}}\n\\caption{{{caption} - see {diagram_name}}}\n\\end{{figure}}'
+        
+        return f'\\begin{{verbatim}}\n{diagram_content}\\end{{verbatim}}'
+
+    latex = re.sub(r'```mermaid\n(.*?)```', extract_mermaid, latex, flags=re.DOTALL)
 
     latex = re.sub(r'^###### (.+)$', r'\\subsubsection{\1}', latex, flags=re.MULTILINE)
     latex = re.sub(r'^##### (.+)$', r'\\subsection{\1}', latex, flags=re.MULTILINE)
@@ -37,8 +67,6 @@ def convert_markdown_to_latex(markdown_content: str) -> str:
     latex = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', latex)
 
     latex = re.sub(r'!\[([^\]]*)\]\(([^\)]+)\)', r'\\begin{figure}[htbp]\n\\centering\n\\includegraphics[width=0.8\\textwidth]{\2}\n\\caption{\1}\n\\end{figure}', latex)
-
-    latex = re.sub(r'```mermaid\n(.*?)```', r'% Mermaid diagram removed:\n% \1', latex, flags=re.DOTALL)
 
     return latex
 
