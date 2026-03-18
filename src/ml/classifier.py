@@ -83,10 +83,20 @@ class SciBERTClassifier:
             return
 
         if self.model is None:
-            model_path = self.model_path or f"./models/{self.model_name.split('/')[-1]}-ct2"
+            model_name_short = self.model_name.split('/')[-1]
+            possible_paths = [
+                self.model_path,
+                f"./models/{model_name_short}-ct2",
+                "./models/scibert-ct2",
+            ]
+            model_path = None
+            for path in possible_paths:
+                if path and os.path.exists(path):
+                    model_path = path
+                    break
             
-            if not os.path.exists(model_path):
-                print(f"Converted model not found at {model_path}. Using keyword-based classification.")
+            if not model_path:
+                print(f"Converted model not found. Tried: {possible_paths}. Using keyword-based classification.")
                 self.backend = BackendType.KEYWORD
                 return
 
