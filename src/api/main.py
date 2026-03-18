@@ -746,6 +746,7 @@ async def clear_papers():
 async def enrich_papers_with_doi(
     skip_existing: bool = True,
     email: Optional[str] = None,
+    limit: Optional[int] = None,
 ):
     """Enrich paper metadata using CrossRef and DataCite APIs.
 
@@ -755,6 +756,7 @@ async def enrich_papers_with_doi(
     Args:
         skip_existing: Skip papers that already have citation counts
         email: Optional email for CrossRef (higher rate limits: 50/sec)
+        limit: Maximum number of papers to enrich (default: all)
     """
     papers = app_state.get("papers", [])
     papers_with_doi = [p for p in papers if p.doi]
@@ -767,13 +769,18 @@ async def enrich_papers_with_doi(
             "papers_with_doi": 0,
         }
 
+    if limit:
+        papers_with_doi = papers_with_doi[:limit]
+
     connector = DOIMetadataConnector(email=email, rate_limit=0.1)
-    enriched_papers = connector.batch_enrich(papers, skip_existing=skip_existing)
+    enriched_papers = connector.batch_enrich(papers_with_doi, skip_existing=skip_existing)
 
     total_citations = sum(p.citations for p in enriched_papers)
     enriched_count = sum(1 for p in enriched_papers if p.raw_metadata.get("doi_source"))
 
-    app_state["papers"] = enriched_papers
+    paper_map = {p.id: p for p in papers}
+    paper_map.update({p.id: p for p in enriched_papers})
+    app_state["papers"] = list(paper_map.values())
 
     return {
         "status": "enriched",
