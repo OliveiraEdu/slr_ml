@@ -129,18 +129,45 @@ def _convert_tables(latex: str) -> str:
         re.MULTILINE
     )
 
+    def parse_alignments(separator_line: str) -> list[str]:
+        """Parse column alignments from markdown separator."""
+        cells = separator_line.strip('|').split('|')
+        alignments = []
+        for cell in cells:
+            cell = cell.strip()
+            if cell.startswith(':') and cell.endswith(':'):
+                alignments.append('c')
+            elif cell.startswith(':'):
+                alignments.append('l')
+            elif cell.endswith(':'):
+                alignments.append('r')
+            else:
+                alignments.append('l')
+        return alignments
+
     def replace_table(match):
         lines = match.group(0).strip().split('\n')
         
-        if all(re.match(r'[\|-]+$', line) for line in lines):
+        separator_idx = None
+        for i, line in enumerate(lines):
+            if re.match(r'[\|: -]+$', line):
+                separator_idx = i
+                break
+        
+        if separator_idx is None:
             return match.group(0)
         
-        if not all('|' in line for line in lines):
+        header_lines = lines[:separator_idx]
+        body_lines = lines[separator_idx + 1:]
+        
+        if not header_lines or not body_lines:
             return match.group(0)
+        
+        alignments = parse_alignments(lines[separator_idx])
         
         rows = []
-        for line in lines:
-            if re.match(r'[\|-]+$', line):
+        for line in header_lines + body_lines:
+            if re.match(r'[\|: -]+$', line):
                 continue
             cells = [c.strip() for c in line.strip('|').split('|')]
             rows.append(cells)
@@ -149,20 +176,21 @@ def _convert_tables(latex: str) -> str:
             return match.group(0)
         
         num_cols = len(rows[0])
-        col_spec = '|' + 'l|' * num_cols
+        col_spec = '|' + ''.join(alignments[:num_cols]) + '|'
         
         result = [f'\\begin{{table}}[htbp]']
         result.append('\\centering')
+        result.append('\\caption{Table Title}')
         result.append(f'\\begin{{tabular}}{{{col_spec}}}')
-        result.append('\\hline')
+        result.append('\\toprule')
         
         result.append(' & '.join(rows[0]) + ' \\\\')
-        result.append('\\hline')
+        result.append('\\midrule')
         
         for row in rows[1:]:
             result.append(' & '.join(row) + ' \\\\')
-            result.append('\\hline')
         
+        result.append('\\bottomrule')
         result.append('\\end{tabular}')
         result.append('\\end{table}')
         
