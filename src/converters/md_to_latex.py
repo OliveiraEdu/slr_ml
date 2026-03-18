@@ -7,12 +7,12 @@ def convert_markdown_to_latex(markdown_content: str) -> str:
     """Convert markdown content to LaTeX format."""
     latex = markdown_content
 
-    latex = re.sub(r'^###### (.+)$', r'\\\subsubsection{\1}', latex, flags=re.MULTILINE)
-    latex = re.sub(r'^##### (.+)$', r'\\\subsection{\1}', latex, flags=re.MULTILINE)
-    latex = re.sub(r'^#### (.+)$', r'\\\section{\1}', latex, flags=re.MULTILINE)
-    latex = re.sub(r'^### (.+)$', r'\\\section{\1}', latex, flags=re.MULTILINE)
-    latex = re.sub(r'^## (.+)$', r'\\\chapter{\1}', latex, flags=re.MULTILINE)
-    latex = re.sub(r'^# (.+)$', r'\\\part{\1}', latex, flags=re.MULTILINE)
+    latex = re.sub(r'^###### (.+)$', r'\\subsubsection{\1}', latex, flags=re.MULTILINE)
+    latex = re.sub(r'^##### (.+)$', r'\\subsection{\1}', latex, flags=re.MULTILINE)
+    latex = re.sub(r'^#### (.+)$', r'\\section{\1}', latex, flags=re.MULTILINE)
+    latex = re.sub(r'^### (.+)$', r'\\section{\1}', latex, flags=re.MULTILINE)
+    latex = re.sub(r'^## (.+)$', r'\\chapter{\1}', latex, flags=re.MULTILINE)
+    latex = re.sub(r'^# (.+)$', r'\\part{\1}', latex, flags=re.MULTILINE)
 
     latex = re.sub(r'\*\*(.+?)\*\*', r'\\textbf{\1}', latex)
     latex = re.sub(r'\*(.+?)\*', r'\\textit{\1}', latex)
