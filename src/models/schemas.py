@@ -247,7 +247,8 @@ class QualityAssessment(BaseModel):
 
 
 class ConvertMarkdownRequest(BaseModel):
-    markdown: str
+    markdown: Optional[str] = None
+    file_path: Optional[str] = None
     title: str = "Document"
     wrap_document: bool = True
 
