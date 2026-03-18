@@ -125,7 +125,7 @@ def _convert_lists(latex: str) -> str:
 def _convert_tables(latex: str) -> str:
     """Convert markdown tables to LaTeX format."""
     table_pattern = re.compile(
-        r'(\|.+\|\n)+',
+        r'((?:\|[^\n]*\|\n?)+)',
         re.MULTILINE
     )
 
