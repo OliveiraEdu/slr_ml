@@ -46,9 +46,11 @@ install-gpu:
 
 convert:
 	@echo "Installing dependencies for model conversion..."
-	@echo "Note: If you get 'externally-managed-environment' error, use --break-system-packages or create a venv"
+	@echo "Note: If you get 'externally-managed-environment' error, use --break-system-packages"
+	pip3 install torch --break-system-packages 2>/dev/null || \
+	python3 -m pip install torch --break-system-packages || \
+	echo "Warning: PyTorch not installed (needed for model conversion)"
 	pip3 install transformers huggingface-hub ctranslate2 --break-system-packages 2>/dev/null || \
-	python3 -m pip install transformers huggingface-hub ctranslate2 --break-system-packages || \
 	python3 -m pip install transformers huggingface-hub ctranslate2 || \
 	echo "Warning: Could not install all dependencies"
 	@echo "Converting SciBERT model..."
