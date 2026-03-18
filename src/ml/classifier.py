@@ -44,18 +44,18 @@ class SciBERTClassifier:
         if backend != BackendType.AUTO:
             return backend
 
-        # Check if ctranslate2 is available
-        try:
-            import ctranslate2
-            return BackendType.CTRANSFORMATE2
-        except ImportError:
-            pass
-
-        # Check if PyTorch is available
+        # Check if PyTorch is available (preferred for BERT)
         try:
             import torch
             import transformers
             return BackendType.PYTORCH
+        except ImportError:
+            pass
+
+        # Check if ctranslate2 is available (for seq2seq models)
+        try:
+            import ctranslate2
+            return BackendType.CTRANSFORMATE2
         except ImportError:
             pass
 
