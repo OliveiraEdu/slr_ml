@@ -11,7 +11,7 @@ from src.models.config_loader import ConfigLoader
 from src.models.schemas import (
     Paper, PrismaFlowData, ScreeningResult, SourceName,
     SourcesConfig, ClassificationConfig, PrismaConfig,
-    RankingWeights,
+    RankingWeights, ConvertMarkdownRequest, ConvertMarkdownResponse,
 )
 from src.loaders.bibtex_loader import BibtexLoader
 from src.loaders.csv_loader import CsvLoader
@@ -22,6 +22,7 @@ from src.pipeline.prisma_generator import PrismaGenerator
 from src.pipeline.extraction import ExtractionExtractor, QualityAssessor
 from src.ml.classifier import SciBERTClassifier, BackendType
 from src.connectors.doi_connector import DOIMetadataConnector
+from scripts.md_to_latex import convert_markdown_to_latex, wrap_in_document
 
 
 app = FastAPI(
@@ -661,7 +662,7 @@ async def run_extraction():
 
 
 @app.get("/prisma/report")
-async def get_prisma_report(format: str = Query("markdown", regex="^(markdown|json)$")):
+async def get_prisma_report(format: str = Query("markdown", regex="^(markdown|json|latex)$")):
     """Generate full PRISMA 2020 report."""
     included_papers = [
         p for p in app_state["papers"]
@@ -695,8 +696,23 @@ async def get_prisma_report(format: str = Query("markdown", regex="^(markdown|js
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = Path("outputs/prisma")
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_path = output_dir / f"report_{timestamp}.md"
 
+    if format == "latex":
+        prisma_cfg = app_state.get("prisma_config")
+        title = prisma_cfg.title if prisma_cfg and hasattr(prisma_cfg, "title") else "PRISMA 2020 Report"
+        latex_content = convert_markdown_to_latex(markdown_report)
+        latex_content = wrap_in_document(latex_content, title)
+        output_path = output_dir / f"report_{timestamp}.tex"
+        with open(output_path, "w") as f:
+            f.write(latex_content)
+        return {
+            "status": "generated",
+            "format": "latex",
+            "report": latex_content,
+            "path": str(output_path),
+        }
+
+    output_path = output_dir / f"report_{timestamp}.md"
     with open(output_path, "w") as f:
         f.write(markdown_report)
 
@@ -827,3 +843,14 @@ async def enrich_single_paper(
         "publication_date": enriched_paper.raw_metadata.get("publication_date"),
         "source": enriched_paper.raw_metadata.get("doi_source"),
     }
+
+
+@app.post("/convert/markdown-to-latex", response_model=ConvertMarkdownResponse)
+async def convert_md_to_latex(request: ConvertMarkdownRequest):
+    """Convert markdown content to LaTeX format."""
+    latex_content = convert_markdown_to_latex(request.markdown)
+    
+    if request.wrap_document:
+        latex_content = wrap_in_document(latex_content, request.title)
+    
+    return ConvertMarkdownResponse(latex=latex_content)

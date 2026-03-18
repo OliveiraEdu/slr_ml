@@ -238,9 +238,11 @@ class MMATScore(BaseModel):
     well_supported_conclusions: Optional[str] = None
 
 
-class QualityAssessment(BaseModel):
-    paper_id: str
-    mmat_score: Optional[MMATScore] = None
-    rating: Optional[QualityRating] = None
-    overall_score: Optional[float] = None
-    notes: Optional[str] = None
+class ConvertMarkdownRequest(BaseModel):
+    markdown: str
+    title: str = "Document"
+    wrap_document: bool = True
+
+
+class ConvertMarkdownResponse(BaseModel):
+    latex: str
