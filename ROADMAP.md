@@ -43,6 +43,23 @@ Add PubMed/MEDLINE as a data source for biomedical literature.
           max_results: 200
     ```
 
+### 3. Async DOI Enrichment
+**Priority:** Medium
+
+Current DOI enrichment blocks the API. Implement async processing:
+
+- Background task processing for large batches
+- Progress tracking and status endpoint
+- WebSocket notifications for completion
+- Configurable batch sizes
+- Retry logic with exponential backoff
+
+```python
+# Implementation:
+POST /papers/enrich  # Returns job_id immediately
+GET /papers/enrich/status/{job_id}  # Check progress
+```
+
 ---
 
 ## v1.2 - Enhanced Screening
