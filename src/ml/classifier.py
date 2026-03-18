@@ -78,18 +78,17 @@ class SciBERTClassifier:
             import ctranslate2
             self._ctranslate2 = ctranslate2
         except ImportError:
-            raise RuntimeError(
-                "ctranslate2 not available. Install: pip install ctranslate2"
-            )
+            print("ctranslate2 not available. Using keyword-based classification.")
+            self.backend = BackendType.KEYWORD
+            return
 
         if self.model is None:
             model_path = self.model_path or f"./models/{self.model_name.split('/')[-1]}-ct2"
             
             if not os.path.exists(model_path):
-                raise FileNotFoundError(
-                    f"Converted model not found at {model_path}. "
-                    "Using keyword-based classification instead."
-                )
+                print(f"Converted model not found at {model_path}. Using keyword-based classification.")
+                self.backend = BackendType.KEYWORD
+                return
 
             self.model = self._ctranslate2.Transformer(model_path)
             
@@ -103,11 +102,10 @@ class SciBERTClassifier:
             import transformers
             self._torch = torch
             self._transformers = transformers
-        except ImportError as e:
-            raise RuntimeError(
-                f"PyTorch/transformers not available: {e}. "
-                "Using keyword-based classification instead."
-            )
+        except ImportError:
+            print("PyTorch/transformers not available. Using keyword-based classification.")
+            self.backend = BackendType.KEYWORD
+            return
 
         if self.tokenizer is None:
             from transformers import AutoTokenizer
