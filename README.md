@@ -40,7 +40,16 @@ Edit `config/sources.yaml` to specify input files and arXiv queries.
 
 Edit `config/classification.yaml` to set PICOC criteria and thresholds.
 
-### 4. Run the API
+### 4. ML Backend
+
+The engine supports multiple classification backends:
+
+- **PyTorch/SciBERT** (default): Accurate semantic classification
+- **Keyword-based**: Fallback when PyTorch unavailable
+
+The API automatically detects available backends.
+
+### 5. Run the API
 
 ```bash
 uvicorn src.api.main:app --reload
@@ -50,7 +59,40 @@ uvicorn src.api.main:app --reload
 
 Open `http://localhost:8000/docs` for Swagger UI.
 
-## Configuration
+## Docker Deployment
+
+### Quick Start with Docker
+
+```bash
+# Build and start all services
+make build-api
+make up
+
+# Or use docker-compose directly
+docker-compose build api
+docker-compose up -d
+```
+
+### Available Make Commands
+
+| Command | Description |
+|---------|-------------|
+| `make build` | Build all Docker containers |
+| `make build-api` | Build only API container |
+| `make build-ml` | Build only ML worker container |
+| `make up` | Start all services |
+| `make down` | Stop all services |
+| `make logs` | View logs |
+| `make status` | Check service health |
+
+### Services
+
+| Service | Port | Description |
+|---------|------|-------------|
+| API | 8000 | Main REST API |
+| ML Worker | 8001 | Health check only |
+
+### Configuration
 
 All configuration is managed through YAML files in the `config/` directory:
 

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-03-18
+
+### Added
+- **DOI Enrichment**: CrossRef and DataCite API integration for citation counts, references, and metadata
+- **Markdown to LaTeX Converter**: Script to convert PRISMA reports to LaTeX for publication
+- **ROADMAP.md**: Future enhancements and planned features
+- **Makefile**: Docker deployment commands for easier management
+
+### New API Endpoints
+- `POST /papers/enrich` - Enrich papers with DOI metadata
+- `GET /papers/enrich/{paper_id}` - Enrich single paper
+
+### New Scripts
+- `scripts/md_to_latex.py` - Markdown to LaTeX converter
+- `config/convert.yaml` - Converter configuration
+
+### Fixes
+- PyTorch/SciBERT integration for accurate classification
+- Graceful fallback to keyword-based classification when ML unavailable
+
 ## [0.2.0] - 2026-03-17
 
 ### Added
