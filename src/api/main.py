@@ -848,19 +848,22 @@ async def enrich_single_paper(
 @app.post("/convert/markdown-to-latex", response_model=ConvertMarkdownResponse)
 async def convert_md_to_latex(request: ConvertMarkdownRequest):
     """Convert markdown content to LaTeX format."""
-    if request.file_path:
-        path = Path(request.file_path)
-        if not path.exists():
-            raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
-        markdown_content = path.read_text(encoding="utf-8")
-    elif request.markdown:
-        markdown_content = request.markdown
-    else:
-        raise HTTPException(status_code=400, detail="Either 'markdown' or 'file_path' must be provided")
-    
-    latex_content = convert_markdown_to_latex(markdown_content)
-    
-    if request.wrap_document:
-        latex_content = wrap_in_document(latex_content, request.title)
-    
-    return ConvertMarkdownResponse(latex=latex_content)
+    try:
+        if request.file_path:
+            path = Path(request.file_path)
+            if not path.exists():
+                raise HTTPException(status_code=404, detail=f"File not found: {request.file_path}")
+            markdown_content = path.read_text(encoding="utf-8")
+        elif request.markdown:
+            markdown_content = request.markdown
+        else:
+            raise HTTPException(status_code=400, detail="Either 'markdown' or 'file_path' must be provided")
+        
+        latex_content = convert_markdown_to_latex(markdown_content)
+        
+        if request.wrap_document:
+            latex_content = wrap_in_document(latex_content, request.title)
+        
+        return ConvertMarkdownResponse(latex=latex_content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
