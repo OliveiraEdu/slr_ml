@@ -1,4 +1,4 @@
-.PHONY: help install convert build build-api build-ml up down logs clean python-upgrade verify-api smoke-test
+.PHONY: help install convert build build-api build-ml build-all rebuild up down logs clean python-upgrade verify-api smoke-test
 
 # Docker hostnames for internal communication
 API_HOST=api
@@ -16,6 +16,8 @@ help:
 	@echo "  make build         Build Docker containers (CPU PyTorch)"
 	@echo "  make build-api     Build only API container"
 	@echo "  make build-ml     Build only ML worker container"
+	@echo "  make build-all     Build all containers (alias for build)"
+	@echo "  make rebuild       Pull latest code and rebuild all services"
 	@echo "  make up            Start all services"
 	@echo "  make down          Stop all services"
 	@echo "  make logs          View logs (all services)"
@@ -56,6 +58,15 @@ help:
 	@echo "  make stage2-queue    Papers eligible for Stage 2"
 	@echo "  make stage2-screen   Run Stage 2 full-text screening"
 	@echo "  make progression      Paper flow through all stages"
+	@echo ""
+	@echo "=== Enhanced Screening (Option B) ==="
+	@echo "  make keyword-filter   Filter papers using keyword pre-screening"
+	@echo "  make al-select        Select papers for active learning review"
+	@echo "  make fine-tune        Fine-tune SciBERT with labeled samples"
+	@echo "  make snowballing      Run snowballing on included papers"
+	@echo "  make certainty        Apply certainty-based auto decisions"
+	@echo "  make cite-rank        Rank papers by citation count"
+	@echo "  make enhanced-full    Run full enhanced screening pipeline"
 	@echo ""
 	@echo "=== PRISMA 2020 ==="
 	@echo "  make checklist       Get PRISMA checklist"
@@ -111,6 +122,25 @@ build-api:
 
 build-ml:
 	docker compose build ml-worker
+
+build-all:
+	docker compose build
+
+rebuild:
+	@echo "=== Rebuilding services with latest code ==="
+	@echo "1. Pulling latest changes..."
+	@git pull origin main || echo "Git pull skipped (not a git repo or no remote)"
+	@echo ""
+	@echo "2. Building API container..."
+	@docker compose build api
+	@echo ""
+	@echo "3. Building ML worker container..."
+	@docker compose build ml-worker
+	@echo ""
+	@echo "4. Restarting services..."
+	@docker compose up -d api ml-worker
+	@echo ""
+	@echo "=== Rebuild complete ==="
 
 up:
 	docker compose up -d
@@ -368,3 +398,78 @@ two-stage-workflow:
 	@echo ""
 	@echo "Overall: Paper progression"
 	@make progression
+
+# === Enhanced Screening Commands (Option B) ===
+
+keyword-filter:
+	@echo "Running keyword-based pre-filtering..."
+	@curl -s -X POST $(API_URL)/enhanced/filter/keywords \
+		-H "Content-Type: application/json" \
+		-d '{"papers": [], "keywords_config": {"keywords": {"required": ["blockchain", "maDMP", "data management plan", "provenance"], "relevant": ["FAIR", "metadata", "smart contract", "IPFS"], "exclusion": ["supply chain", "finance", "opinion paper"]}}}' \
+		| python3 -m json.tool
+
+al-select:
+	@echo "Selecting papers for active learning review..."
+	@curl -s -X POST $(API_URL)/enhanced/active-learning \
+		-H "Content-Type: application/json" \
+		-d '{"papers": [], "config": {"initial_training_size": 50, "batch_size": 20}}' \
+		| python3 -m json.tool
+
+fine-tune:
+	@echo "Fine-tuning SciBERT (requires labeled samples)..."
+	@echo "Use /enhanced/fine-tune endpoint with labeled texts and labels arrays"
+	@curl -s -X POST $(API_URL)/enhanced/fine-tune \
+		-H "Content-Type: application/json" \
+		-d '{"texts": ["sample text 1", "sample text 2"], "labels": [1, 0]}' \
+		| python3 -m json.tool
+
+snowballing:
+	@echo "Running snowballing on included papers..."
+	@curl -s -X POST $(API_URL)/enhanced/snowballing \
+		-H "Content-Type: application/json" \
+		-d '{"papers": [], "config": {"max_depth": 2, "max_papers_per_source": 50}}' \
+		| python3 -m json.tool
+
+certainty:
+	@echo "Applying certainty-based screening decisions..."
+	@curl -s -X POST $(API_URL)/enhanced/certainty-screening \
+		-H "Content-Type: application/json" \
+		-d '{"results": [], "exclude_confidence": 0.80, "include_confidence": 0.80}' \
+		| python3 -m json.tool
+
+cite-rank:
+	@echo "Ranking papers by citation count..."
+	@curl -s -X POST $(API_URL)/enhanced/rank/citations \
+		-H "Content-Type: application/json" \
+		-d '{"papers": [], "n": 50, "min_citations": 0}' \
+		| python3 -m json.tool
+
+enhanced-full:
+	@echo "Running full enhanced screening pipeline..."
+	@curl -s -X POST $(API_URL)/enhanced/screening/full \
+		-H "Content-Type: application/json" \
+		-d '{"papers": [], "strategy": "full", "keywords_config": {"keywords": {"required": ["blockchain", "maDMP", "provenance"], "relevant": ["FAIR", "metadata"], "exclusion": ["supply chain"]}}}' \
+		| python3 -m json.tool
+
+# === Complete Enhanced Screening Workflow ===
+
+enhanced-workflow:
+	@echo "=== Enhanced Screening Workflow (Option B) ==="
+	@echo ""
+	@echo "Step 1: Import papers from sources"
+	@make import-sample
+	@echo ""
+	@echo "Step 2: Keyword pre-filtering"
+	@make keyword-filter
+	@echo ""
+	@echo "Step 3: Run initial ML screening"
+	@make screen
+	@echo ""
+	@echo "Step 4: Apply certainty-based decisions"
+	@make certainty
+	@echo ""
+	@echo "Step 5: Rank by citations"
+	@make cite-rank
+	@echo ""
+	@echo "Step 6: Get screening statistics"
+	@make stats
