@@ -63,12 +63,20 @@ class ArxivConfig(BaseModel):
     categories: list[str] = Field(default_factory=list)
 
 
+class DOIConfig(BaseModel):
+    enabled: bool = True
+    email: Optional[str] = None
+    rate_limit: float = 0.1
+    skip_existing: bool = True
+
+
 class SourcesConfig(BaseModel):
     wos: SourceConfig = Field(default_factory=SourceConfig)
     ieee: SourceConfig = Field(default_factory=SourceConfig)
     acm: SourceConfig = Field(default_factory=SourceConfig)
     scopus: SourceConfig = Field(default_factory=SourceConfig)
     arxiv: ArxivConfig = Field(default_factory=ArxivConfig)
+    doi: DOIConfig = Field(default_factory=DOIConfig)
 
 
 class ModelConfig(BaseModel):

@@ -9,6 +9,7 @@ from src.models.schemas import (
     ArxivConfig,
     ClassificationConfig,
     ClassificationLabel,
+    DOIConfig,
     ExclusionCriteria,
     InclusionCriteria,
     KeywordsConfig,
@@ -16,6 +17,7 @@ from src.models.schemas import (
     PrismaConfig,
     RelevanceConfig,
     ScreeningStages,
+    SourceConfig,
     SourcesConfig,
     SubQuestions,
     Thresholds,
@@ -50,7 +52,12 @@ class ConfigLoader:
     def load_sources(self) -> SourcesConfig:
         """Load sources configuration."""
         data = self._load_yaml("sources.yaml")
-        return SourcesConfig(**data["sources"])
+        sources_data = data.get("sources", {})
+        
+        doi_data = sources_data.get("doi", {})
+        sources_data["doi"] = DOIConfig(**doi_data) if doi_data else DOIConfig()
+        
+        return SourcesConfig(**sources_data)
 
     def load_classification(self) -> ClassificationConfig:
         """Load classification configuration with flexible schema."""

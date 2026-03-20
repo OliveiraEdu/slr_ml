@@ -137,9 +137,6 @@ clean:
 run-api:
 	uvicorn src.api.main:app --reload --port 8000
 
-test:
-	pytest -v
-
 test-classifier:
 	python3 -c "from src.ml.classifier import SciBERTClassifier, BackendType; c = SciBERTClassifier(backend='pytorch'); print('OK')"
 
@@ -155,7 +152,9 @@ status:
 
 # API Testing commands (executed from within Docker)
 health:
-	@docker compose exec -T api curl -s http://localhost:8000/health | python3 -m json.tool
+	@echo "Waiting for API to be ready..."
+	@sleep 2
+	@docker compose exec -T api curl -s http://localhost:8000/health 2>/dev/null | python3 -m json.tool || docker compose exec -T api curl -s http://localhost:8000/health
 
 import-sample:
 	@echo "Importing sample papers from inputs/ directory..."
@@ -299,11 +298,6 @@ checklist:
 	@echo "PRISMA 2020 Checklist..."
 	@docker compose exec -T api curl -s http://localhost:8000/prisma/checklist \
 		| python3 -m json.tool | head -50
-
-prisma-flow:
-	@echo "PRISMA flow diagram data..."
-	@docker compose exec -T api curl -s http://localhost:8000/prisma/flow \
-		| python3 -m json.tool
 
 prisma-report:
 	@echo "Generating full PRISMA 2020 report..."

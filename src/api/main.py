@@ -66,7 +66,8 @@ async def startup_event():
         else:
             logger.warning("Config directory not found, skipping auto-load")
     except Exception as e:
-        logger.warning(f"Failed to load config on startup: {e}")
+        logger.error(f"Failed to load config on startup: {e}", exc_info=True)
+        app_state["config_loaded"] = False
 
 
 @app.get("/")
