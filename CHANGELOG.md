@@ -5,7 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0] - 2026-03-20
+## [0.6.0] - 2026-03-20
+
+> **Note**: API version is still 0.5.0 - update after testing
+
+### Enhanced Screening Pipeline (Option B)
+
+#### Added
+- **Keyword Pre-filtering**: `src/ml/keyword_filter.py` - Multi-tier keyword matching:
+  - Required keywords (AND logic)
+  - Relevant keywords (OR logic)
+  - Exclusion keywords (immediate exclude)
+- **Active Learning Pipeline**: `src/ml/active_learning.py`:
+  - `ActiveLearningPipeline` for iterative screening
+  - `CitationRanker` for citation-based ranking
+  - `CertaintyBasedScreen` for automated decisions
+- **SciBERT Fine-tuning**: `src/ml/fine_tuning.py` - Fine-tune with labeled samples
+- **Snowballing Search**: `src/ml/snowballing.py` - Backward/forward snowballing via Semantic Scholar
+- **Enhanced Screening Endpoints**: `src/api/routers/enhanced_screening.py`:
+  - `POST /enhanced/filter/keywords` - Keyword pre-filtering
+  - `POST /enhanced/active-learning` - Sample selection for review
+  - `POST /enhanced/fine-tune` - Fine-tune SciBERT
+  - `POST /enhanced/snowballing` - Reference chasing
+  - `POST /enhanced/certainty-screening` - Auto decisions
+  - `POST /enhanced/rank/citations` - Citation ranking
+  - `POST /enhanced/screening/full` - Full pipeline
+- **PubMed Support**: Added to SourceName enum and CSV loader
+- **Makefile Commands**:
+  - `make rebuild` - Pull latest and rebuild
+  - `make keyword-filter` - Keyword pre-filtering
+  - `make al-select` - Active learning selection
+  - `make snowballing` - Snowballing search
+  - `make certainty` - Certainty screening
+  - `make cite-rank` - Citation ranking
+  - `make enhanced-full` - Full enhanced pipeline
+  - `make enhanced-workflow` - Complete workflow
+
+#### Fixed
+- **ML Worker Health Check**: Simplified to avoid ctranslate2 dependency
+- **Missing Dependency**: Added `datasets>=2.14.0` to requirements.txt
 
 ### Infrastructure & Testing
 

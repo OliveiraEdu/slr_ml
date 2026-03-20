@@ -1,15 +1,22 @@
 # PRISMA 2020 Systematic Literature Review Engine
 
-**Version**: 0.5.0
+**Version**: 0.6.0
 
 A configuration-driven systematic literature review engine that automates paper retrieval, screening, and classification following PRISMA 2020 guidelines using SciBERT for zero-shot classification.
 
 ## Features
 
-- **Multi-source import**: BibTeX and CSV files from WoS, IEEE Xplore, ACM, and Scopus
+- **Multi-source import**: BibTeX and CSV files from WoS, IEEE Xplore, ACM, Scopus, and PubMed
 - **URL Download**: Download paper exports directly from remote URLs
 - **arXiv integration**: Real-time API queries for preprints
 - **ML-powered screening**: SciBERT zero-shot classification with confidence bands
+- **Enhanced screening (Option B)**:
+  - Keyword pre-filtering (required/relevant/exclusion keywords)
+  - Active learning for iterative manual review
+  - Citation-based ranking
+  - SciBERT fine-tuning capability
+  - Backward/forward snowballing
+  - Certainty-based automated decisions
 - **Two-stage screening**: Title/abstract → Full-text workflow
 - **PRISMA 2020 compliance**: Automated flow diagram, 27-item checklist, full reports
 - **Data extraction**: 35+ maDMP/blockchain fields for included studies
@@ -79,6 +86,15 @@ make ft-retrievable    # Papers needing FT
 make stage2-queue     # Stage 2 eligible
 make stage2-screen    # Run Stage 2
 
+# Enhanced screening (Option B)
+make keyword-filter    # Keyword pre-filtering
+make al-select        # Active learning selection
+make snowballing      # Snowballing search
+make certainty        # Certainty-based auto decisions
+make cite-rank        # Citation ranking
+make enhanced-full    # Full enhanced pipeline
+make enhanced-workflow  # Complete workflow
+
 # PRISMA
 make checklist         # PRISMA 2020 checklist
 make prisma-flow       # Flow diagram
@@ -132,6 +148,17 @@ make download-all       # Download all sources
 | `/prisma/synthesis/gaps` | GET | Research gaps |
 | `/prisma/quality/assess` | POST | Run quality assessment |
 | `/prisma/quality/export` | GET | Export quality as CSV |
+
+### Enhanced Screening (Option B)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/enhanced/filter/keywords` | POST | Keyword pre-filtering |
+| `/enhanced/active-learning` | POST | Sample selection for review |
+| `/enhanced/fine-tune` | POST | Fine-tune SciBERT |
+| `/enhanced/snowballing` | POST | Reference chasing |
+| `/enhanced/certainty-screening` | POST | Auto decisions |
+| `/enhanced/rank/citations` | POST | Citation ranking |
+| `/enhanced/screening/full` | POST | Full enhanced pipeline |
 
 ### Configuration
 | Endpoint | Method | Description |
