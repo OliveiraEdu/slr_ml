@@ -19,7 +19,11 @@ Contributions are welcome! Please follow these guidelines:
 
 Run tests with:
 ```bash
-pytest
+pytest                    # All tests
+make test                 # Unit tests only
+make test-integration     # Integration tests (requires running API)
+make verify-api          # Verify API is accessible
+make smoke-test          # Comprehensive smoke test (7 endpoints)
 ```
 
 ## Commit Messages

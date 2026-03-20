@@ -62,6 +62,8 @@ make test               # Unit tests only
 make test-integration   # Integration tests (requires running API)
 make test-all          # All tests
 make coverage           # Tests with coverage report
+make verify-api        # Verify API is accessible
+make smoke-test        # Comprehensive API smoke test (7 endpoints)
 ```
 
 ### Workflow

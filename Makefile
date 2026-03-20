@@ -1,10 +1,13 @@
-.PHONY: help install convert build build-api build-ml up down logs clean python-upgrade
+.PHONY: help install convert build build-api build-ml up down logs clean python-upgrade verify-api smoke-test
 
 # Docker hostnames for internal communication
 API_HOST=api
 ML_WORKER_HOST=ml-worker
 API_PORT=8000
 ML_WORKER_PORT=8001
+
+# API URL: Use localhost if accessible, otherwise fallback to Docker hostname
+API_URL := $(shell curl -s --connect-timeout 2 http://localhost:8000/health >/dev/null 2>&1 && echo "http://localhost:8000" || echo "http://api:8000")
 
 help:
 	@echo "PRISMA 2020 SLR Engine - Make Commands"
@@ -39,6 +42,8 @@ help:
 	@echo ""
 	@echo "=== API Testing (via Docker) ==="
 	@echo "  make health        Check API health (via Docker hostname)"
+	@echo "  make verify-api    Verify API is accessible (local or Docker)"
+	@echo "  make smoke-test    Run comprehensive API smoke test"
 	@echo "  make import-sample  Import sample papers for testing"
 	@echo "  make screen        Run ML screening on imported papers"
 	@echo "  make queue          Get uncertain papers for manual review"
@@ -111,7 +116,7 @@ up:
 	docker compose up -d
 	@echo "Waiting for services to be ready..."
 	@sleep 5
-	@curl -s http://localhost:8000/health || echo "API not ready yet"
+	@curl -s $(API_URL)/health || echo "API not ready yet"
 
 up-gpu:
 	docker compose up -d
@@ -153,39 +158,69 @@ status:
 # API Testing commands (executed from within Docker)
 health:
 	@echo "Checking API health..."
-	@curl -s http://localhost:8000/health 2>/dev/null | python3 -m json.tool || echo "API not reachable at localhost:8000"
+	@curl -s $(API_URL)/health 2>/dev/null | python3 -m json.tool || echo "API not reachable"
+
+verify-api:
+	@echo "Verifying API accessibility..."
+	@curl -s --connect-timeout 2 $(API_URL)/health >/dev/null && echo "✅ API is accessible at $(API_URL)" || (echo "❌ API not responding at $(API_URL)"; exit 1)
 
 import-sample:
 	@echo "Importing sample papers from inputs/ directory..."
-	@curl -s -X POST http://localhost:8000/papers/import-directory \
+	@curl -s -X POST $(API_URL)/papers/import-directory \
 		-H "Content-Type: application/json" \
 		-d '{"directory": "inputs", "auto_detect": true}' | python3 -m json.tool
 
 screen:
 	@echo "Running ML screening with confidence calibration..."
-	@curl -s -X POST http://localhost:8000/screening/run \
+	@curl -s -X POST $(API_URL)/screening/run \
 		-H "Content-Type: application/json" \
 		-d '{"threshold": 0.5}' | python3 -m json.tool
 
 queue:
 	@echo "Papers requiring manual review (uncertain/low confidence)..."
-	@curl -s "http://localhost:8000/screening/queue/uncertain?limit=20" \
+	@curl -s "$(API_URL)/screening/queue/uncertain?limit=20" \
 		| python3 -m json.tool
 
 stats:
 	@echo "Screening statistics for PRISMA reporting..."
-	@curl -s http://localhost:8000/screening/statistics \
+	@curl -s $(API_URL)/screening/statistics \
 		| python3 -m json.tool
 
 rank:
 	@echo "Top papers by relevance..."
-	@curl -s "http://localhost:8000/screening/rank?n=20&sort_by=relevance" \
+	@curl -s "$(API_URL)/screening/rank?n=20&sort_by=relevance" \
 		| python3 -m json.tool
 
 prisma-flow:
 	@echo "PRISMA flow diagram data..."
-	@curl -s http://localhost:8000/prisma/flow \
+	@curl -s $(API_URL)/prisma/flow \
 		| python3 -m json.tool
+
+smoke-test:
+	@echo "=== Running API Smoke Test ==="
+	@echo ""
+	@echo "1. Health check..."
+	@curl -s $(API_URL)/health | grep -q '"status".*"healthy"' && echo "✅ Health OK" || (echo "❌ Health check failed"; exit 1)
+	@echo ""
+	@echo "2. Config status..."
+	@curl -s $(API_URL)/config/status | grep -q '"loaded".*true' && echo "✅ Config OK" || (echo "❌ Config check failed"; exit 1)
+	@echo ""
+	@echo "3. Paper import..."
+	@curl -s -X POST $(API_URL)/papers/import -H "Content-Type: application/json" -d '{"source":"acm","file_path":"inputs/acm.bib"}' | grep -q '"status".*"imported"' && echo "✅ Import OK" || (echo "❌ Import failed"; exit 1)
+	@echo ""
+	@echo "4. Screening..."
+	@curl -s -X POST $(API_URL)/screening/run | grep -q '"status".*"screening_complete"' && echo "✅ Screening OK" || (echo "❌ Screening failed"; exit 1)
+	@echo ""
+	@echo "5. PRISMA flow..."
+	@curl -s $(API_URL)/prisma/flow | grep -q 'total_screened' && echo "✅ PRISMA Flow OK" || (echo "❌ PRISMA flow failed"; exit 1)
+	@echo ""
+	@echo "6. Extraction..."
+	@curl -s -X POST $(API_URL)/prisma/extract | grep -q '"status".*"extracted"' && echo "✅ Extraction OK" || (echo "❌ Extraction failed"; exit 1)
+	@echo ""
+	@echo "7. Synthesis..."
+	@curl -s $(API_URL)/prisma/synthesis | grep -q '"overview"' && echo "✅ Synthesis OK" || (echo "❌ Synthesis failed"; exit 1)
+	@echo ""
+	@echo "=== ✅ All smoke tests passed ==="
 
 # Code quality
 lint:
@@ -243,23 +278,23 @@ screening-workflow:
 # Data Source Download Commands
 sources:
 	@echo "Configured data sources from data_sources.yaml..."
-	@curl -s http://localhost:8000/papers/sources \
+	@curl -s $(API_URL)/papers/sources \
 		| python3 -m json.tool
 
 download-all:
 	@echo "Downloading all configured source files..."
-	@curl -s -X POST http://localhost:8000/papers/download-all \
+	@curl -s -X POST $(API_URL)/papers/download-all \
 		| python3 -m json.tool
 
 download-source:
 	@read -p "Enter source name (wos/ieee/acm/scopus/pubmed): " source; \
-	curl -s -X POST "http://localhost:8000/papers/download-all" \
+	curl -s -X POST "$(API_URL)/papers/download-all" \
 		-H "Content-Type: application/json" \
 		-d "{\"sources\": [\"$$source\"]}" | python3 -m json.tool
 
 import-downloaded:
 	@echo "Importing downloaded files..."
-	@curl -s -X POST "http://localhost:8000/papers/import-downloaded?directory=inputs" \
+	@curl -s -X POST "$(API_URL)/papers/import-downloaded?directory=inputs" \
 		| python3 -m json.tool
 
 download-and-import:
@@ -272,44 +307,44 @@ download-and-import:
 # Phase 3: Two-Stage Screening Workflow
 ft-retrievable:
 	@echo "Papers eligible for full-text retrieval..."
-	@curl -s http://localhost:8000/papers/retrievable \
+	@curl -s $(API_URL)/papers/retrievable \
 		| python3 -m json.tool
 
 ft-flagged:
 	@echo "Papers flagged for no DOI (excluded from Stage 2)..."
-	@curl -s http://localhost:8000/papers/flagged \
+	@curl -s $(API_URL)/papers/flagged \
 		| python3 -m json.tool
 
 ft-progress:
 	@echo "Full-text retrieval progress..."
-	@curl -s http://localhost:8000/papers/progress/fulltext \
+	@curl -s $(API_URL)/papers/progress/fulltext \
 		| python3 -m json.tool
 
 stage2-queue:
 	@echo "Papers eligible for Stage 2 (full-text) screening..."
-	@curl -s "http://localhost:8000/screening/queue/stage2?limit=20" \
+	@curl -s "$(API_URL)/screening/queue/stage2?limit=20" \
 		| python3 -m json.tool
 
 stage2-screen:
 	@echo "Running Stage 2 full-text screening..."
-	@curl -s -X POST http://localhost:8000/screening/stage2 \
+	@curl -s -X POST $(API_URL)/screening/stage2 \
 		-H "Content-Type: application/json" \
 		-d '{"threshold": 0.5}' | python3 -m json.tool
 
 progression:
 	@echo "Paper progression through screening stages..."
-	@curl -s http://localhost:8000/screening/progression \
+	@curl -s $(API_URL)/screening/progression \
 		| python3 -m json.tool
 
 # PRISMA 2020 commands
 checklist:
 	@echo "PRISMA 2020 Checklist..."
-	@curl -s http://localhost:8000/prisma/checklist \
+	@curl -s $(API_URL)/prisma/checklist \
 		| python3 -m json.tool | head -50
 
 prisma-report:
 	@echo "Generating full PRISMA 2020 report..."
-	@curl -s -X POST "http://localhost:8000/prisma/report/full?format=markdown" \
+	@curl -s -X POST "$(API_URL)/prisma/report/full?format=markdown" \
 		| python3 -m json.tool
 
 # Complete two-stage workflow
