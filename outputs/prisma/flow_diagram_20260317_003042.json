@@ -1,0 +1,14 @@
+{
+  "identification_identified": 0,
+  "identification_removed_duplicates": 0,
+  "identification_after_duplicates": 0,
+  "screening_abstract_excluded": 1,
+  "screening_abstract_excluded_reasons": {},
+  "screening_sought_retrieval": 0,
+  "screening_not_retrieved": 0,
+  "eligibility_fulltext_excluded": 0,
+  "eligibility_fulltext_excluded_reasons": {},
+  "included_studies": 0,
+  "total_screened": 1,
+  "total_excluded": 1
+}
