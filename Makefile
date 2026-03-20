@@ -1,28 +1,66 @@
 .PHONY: help install convert build build-api build-ml up down logs clean python-upgrade
 
+# Docker hostnames for internal communication
+API_HOST=api
+ML_WORKER_HOST=ml-worker
+API_PORT=8000
+ML_WORKER_PORT=8001
+
 help:
 	@echo "PRISMA 2020 SLR Engine - Make Commands"
 	@echo ""
 	@echo "=== Docker Deployment ==="
 	@echo "  make build         Build Docker containers (CPU PyTorch)"
 	@echo "  make build-api     Build only API container"
-	@echo "  make build-ml      Build only ML worker container"
+	@echo "  make build-ml     Build only ML worker container"
 	@echo "  make up            Start all services"
 	@echo "  make down          Stop all services"
 	@echo "  make logs          View logs (all services)"
 	@echo "  make logs-api      View API logs"
-	@echo "  make logs-ml       View ML worker logs"
+	@echo "  make logs-ml      View ML worker logs"
 	@echo "  make clean         Clean up containers and volumes"
 	@echo "  make status        Check service health"
 	@echo ""
 	@echo "=== Development ==="
-	@echo "  make python-upgrade  Upgrade Python to 3.12 (required)"
-	@echo "  make install        Install dependencies locally"
+	@echo "  make install       Install dependencies locally"
 	@echo "  make run-api       Run API locally (for development)"
+	@echo "  make lint          Run code linting"
+	@echo "  make typecheck     Run mypy type checking"
 	@echo ""
 	@echo "=== Testing ==="
 	@echo "  make test          Run pytest"
-	@echo "  make test-classifier Test SciBERT classifier"
+	@echo "  make test-watch    Run pytest with watch mode"
+	@echo "  make coverage      Run pytest with coverage report"
+	@echo ""
+	@echo "=== Data Source Download ==="
+	@echo "  make sources         List configured data sources"
+	@echo "  make download-all    Download all configured sources"
+	@echo "  make import-downloaded  Import downloaded files"
+	@echo ""
+	@echo "=== API Testing (via Docker) ==="
+	@echo "  make health        Check API health (via Docker hostname)"
+	@echo "  make import-sample  Import sample papers for testing"
+	@echo "  make screen        Run ML screening on imported papers"
+	@echo "  make queue          Get uncertain papers for manual review"
+	@echo "  make stats         Get screening statistics"
+	@echo ""
+	@echo "=== Two-Stage Screening (Phase 3) ==="
+	@echo "  make ft-retrievable  Get papers needing full-text retrieval"
+	@echo "  make ft-flagged      Get papers flagged for no DOI"
+	@echo "  make ft-progress     Full-text retrieval progress"
+	@echo "  make stage2-queue    Papers eligible for Stage 2"
+	@echo "  make stage2-screen   Run Stage 2 full-text screening"
+	@echo "  make progression      Paper flow through all stages"
+	@echo ""
+	@echo "=== PRISMA 2020 ==="
+	@echo "  make checklist       Get PRISMA checklist"
+	@echo "  make prisma-flow     PRISMA flow diagram"
+	@echo "  make prisma-report   Full PRISMA 2020 report"
+	@echo ""
+	@echo "=== Direct API Access ==="
+	@echo "  Local:  curl http://localhost:$(API_PORT)/"
+	@echo "  Docker: curl http://$(API_HOST):$(API_PORT)/"
+	@echo "  Docs:   http://localhost:$(API_PORT)/docs"
 
 python-upgrade:
 	@echo "Checking Python version..."
@@ -109,5 +147,187 @@ status:
 	@echo "=== Docker Services ==="
 	@docker compose ps
 	@echo ""
-	@echo "=== API Health ==="
-	@curl -s http://localhost:8000/health | python3 -m json.tool 2>/dev/null || echo "API not running"
+	@echo "=== API Health (via Docker hostname) ==="
+	@docker compose exec -T api curl -s http://localhost:8000/health 2>/dev/null | python3 -m json.tool 2>/dev/null || echo "API not reachable via Docker"
+	@echo ""
+	@echo "=== Local API Health ==="
+	@curl -s http://localhost:8000/health 2>/dev/null | python3 -m json.tool 2>/dev/null || echo "API not running locally"
+
+# API Testing commands (executed from within Docker)
+health:
+	@docker compose exec -T api curl -s http://localhost:8000/health | python3 -m json.tool
+
+import-sample:
+	@echo "Importing sample papers from inputs/ directory..."
+	@docker compose exec -T api curl -s -X POST http://localhost:8000/papers/import-directory \
+		-H "Content-Type: application/json" \
+		-d '{"directory": "inputs", "auto_detect": true}' | python3 -m json.tool
+
+screen:
+	@echo "Running ML screening with confidence calibration..."
+	@docker compose exec -T api curl -s -X POST http://localhost:8000/screening/run \
+		-H "Content-Type: application/json" \
+		-d '{"threshold": 0.5}' | python3 -m json.tool
+
+queue:
+	@echo "Papers requiring manual review (uncertain/low confidence)..."
+	@docker compose exec -T api curl -s "http://localhost:8000/screening/queue/uncertain?limit=20" \
+		| python3 -m json.tool
+
+stats:
+	@echo "Screening statistics for PRISMA reporting..."
+	@docker compose exec -T api curl -s http://localhost:8000/screening/statistics \
+		| python3 -m json.tool
+
+rank:
+	@echo "Top papers by relevance..."
+	@docker compose exec -T api curl -s "http://localhost:8000/screening/rank?n=20&sort_by=relevance" \
+		| python3 -m json.tool
+
+prisma-flow:
+	@echo "PRISMA flow diagram data..."
+	@docker compose exec -T api curl -s http://localhost:8000/prisma/flow \
+		| python3 -m json.tool
+
+# Code quality
+lint:
+	@echo "Running black formatter check..."
+	@python3 -m black --check src/ 2>/dev/null || echo "Install black: pip install black"
+	@echo "Running isort check..."
+	@python3 -m isort --check src/ 2>/dev/null || echo "Install isort: pip install isort"
+
+typecheck:
+	@echo "Running mypy type checker..."
+	@python3 -m mypy src/ 2>/dev/null || echo "Install mypy: pip install mypy"
+
+# Test commands
+test:
+	pytest -v tests/
+
+test-watch:
+	pytest -v tests/ --watch 2>/dev/null || pytest -v tests/
+
+coverage:
+	pytest --cov=src --cov-report=html --cov-report=term tests/
+
+# Development helpers
+enter-api:
+	docker compose exec api /bin/bash
+
+enter-ml:
+	docker compose exec ml-worker /bin/bash
+
+# Quick workflow for screening
+screening-workflow:
+	@echo "=== ML-Assisted Screening Workflow ==="
+	@echo ""
+	@echo "Step 1: Import papers"
+	@make import-sample
+	@echo ""
+	@echo "Step 2: Run screening"
+	@make screen
+	@echo ""
+	@echo "Step 3: Review uncertain papers"
+	@make queue
+	@echo ""
+	@echo "Step 4: Get statistics"
+	@make stats
+
+# Data Source Download Commands
+sources:
+	@echo "Configured data sources from data_sources.yaml..."
+	@docker compose exec -T api curl -s http://localhost:8000/papers/sources \
+		| python3 -m json.tool
+
+download-all:
+	@echo "Downloading all configured source files..."
+	@docker compose exec -T api curl -s -X POST http://localhost:8000/papers/download-all \
+		| python3 -m json.tool
+
+download-source:
+	@read -p "Enter source name (wos/ieee/acm/scopus/pubmed): " source; \
+	docker compose exec -T api curl -s -X POST "http://localhost:8000/papers/download-all" \
+		-H "Content-Type: application/json" \
+		-d "{\"sources\": [\"$$source\"]}" | python3 -m json.tool
+
+import-downloaded:
+	@echo "Importing downloaded files..."
+	@docker compose exec -T api curl -s -X POST "http://localhost:8000/papers/import-downloaded?directory=inputs" \
+		| python3 -m json.tool
+
+download-and-import:
+	@echo "Downloading sources and importing papers..."
+	@make download-all
+	@echo ""
+	@echo "Importing downloaded files..."
+	@make import-downloaded
+
+# Phase 3: Two-Stage Screening Workflow
+ft-retrievable:
+	@echo "Papers eligible for full-text retrieval..."
+	@docker compose exec -T api curl -s http://localhost:8000/papers/retrievable \
+		| python3 -m json.tool
+
+ft-flagged:
+	@echo "Papers flagged for no DOI (excluded from Stage 2)..."
+	@docker compose exec -T api curl -s http://localhost:8000/papers/flagged \
+		| python3 -m json.tool
+
+ft-progress:
+	@echo "Full-text retrieval progress..."
+	@docker compose exec -T api curl -s http://localhost:8000/papers/progress/fulltext \
+		| python3 -m json.tool
+
+stage2-queue:
+	@echo "Papers eligible for Stage 2 (full-text) screening..."
+	@docker compose exec -T api curl -s "http://localhost:8000/screening/queue/stage2?limit=20" \
+		| python3 -m json.tool
+
+stage2-screen:
+	@echo "Running Stage 2 full-text screening..."
+	@docker compose exec -T api curl -s -X POST http://localhost:8000/screening/stage2 \
+		-H "Content-Type: application/json" \
+		-d '{"threshold": 0.5}' | python3 -m json.tool
+
+progression:
+	@echo "Paper progression through screening stages..."
+	@docker compose exec -T api curl -s http://localhost:8000/screening/progression \
+		| python3 -m json.tool
+
+# PRISMA 2020 commands
+checklist:
+	@echo "PRISMA 2020 Checklist..."
+	@docker compose exec -T api curl -s http://localhost:8000/prisma/checklist \
+		| python3 -m json.tool | head -50
+
+prisma-flow:
+	@echo "PRISMA flow diagram data..."
+	@docker compose exec -T api curl -s http://localhost:8000/prisma/flow \
+		| python3 -m json.tool
+
+prisma-report:
+	@echo "Generating full PRISMA 2020 report..."
+	@docker compose exec -T api curl -s -X POST "http://localhost:8000/prisma/report/full?format=markdown" \
+		| python3 -m json.tool
+
+# Complete two-stage workflow
+two-stage-workflow:
+	@echo "=== Two-Stage Screening Workflow ==="
+	@echo ""
+	@echo "Stage 1: Title/Abstract Screening"
+	@make screen
+	@echo ""
+	@echo "Stage 1: Get retrievable papers"
+	@make ft-retrievable
+	@echo ""
+	@echo "Stage 1: Get flagged papers"
+	@make ft-flagged
+	@echo ""
+	@echo "Stage 1: Get progress"
+	@make ft-progress
+	@echo ""
+	@echo "Stage 2: Get eligible papers"
+	@make stage2-queue
+	@echo ""
+	@echo "Overall: Paper progression"
+	@make progression

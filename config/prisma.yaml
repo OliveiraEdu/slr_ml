@@ -7,28 +7,43 @@ prisma:
 
   # Exclusion reasons for title/abstract screening
   title_abstract_exclusion_reasons:
-    - "Not relevant to research question"
-    - "Wrong study design"
-    - "Wrong population"
-    - "Wrong intervention"
-    - "No outcomes of interest"
-    - "Insufficient information"
-    - "Duplicate"
+    # Relevance exclusions
+    - "Not relevant to maDMP/blockchain research question"
+    - "No blockchain component"
+    - "No data management plan component"
+    - "No provenance tracking"
+    - # Study type exclusions
+    - "Opinion/editorial piece"
+    - "Non-empirical contribution"
+    - "Literature review only"
+    - # Context exclusions
+    - "Wrong domain (supply chain, finance only)"
+    - "Not about scientific/research data"
+    - # Practical exclusions
+    - "Full text not available"
+    - "Duplicate publication"
     - "Not in English"
     - "Conference abstract only"
+    - "Published before 2018"
     - "Other"
 
   # Exclusion reasons for full-text screening
   full_text_exclusion_reasons:
+    # Relevance exclusions (refined after full-text review)
+    - "No maDMP implementation"
+    - "No blockchain implementation"
+    - "No verifiable provenance mechanism"
+    - "Pure provenance without blockchain"
+    - "Blockchain not applied to scientific data"
+    # Quality exclusions
+    - "No technical implementation details"
+    - "Insufficient evaluation/methodology"
+    - "Results not applicable"
+    # Practical exclusions
     - "Full text not available"
-    - "Not relevant to research question"
-    - "Wrong study design"
-    - "Wrong population"
-    - "Wrong intervention"
-    - "No outcomes of interest"
-    - "Insufficient data/results"
     - "Duplicate publication"
     - "Wrong context"
+    - "Protocol paper only"
     - "Other"
 
   # Inclusion criteria

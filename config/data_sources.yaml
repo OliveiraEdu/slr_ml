@@ -1,0 +1,89 @@
+# Data Sources Configuration
+# Configure URLs for downloading paper exports from academic databases
+# 
+# Supported sources: wos, ieee, acm, scopus, pubmed, arxiv
+#
+# URL patterns:
+#   - GitHub raw content: https://raw.githubusercontent.com/...
+#   - GitHub releases: https://github.com/.../releases/...
+#   - Direct URLs: https://example.com/path/to/file.bib
+#
+# File patterns are used to auto-detect source from downloaded files
+
+sources:
+  # Web of Science
+  wos:
+    enabled: true
+    base_url: "https://raw.githubusercontent.com/OliveiraEdu/R/master/data"
+    files:
+      - "wos.bib"
+      - "wos_export.bib"
+      - "savedrecs.bib"
+    format: "bibtex"
+    description: "Web of Science exports"
+
+  # IEEE Xplore
+  ieee:
+    enabled: true
+    base_url: "https://raw.githubusercontent.com/OliveiraEdu/R/master/data"
+    files:
+      - "ieee.bib"
+      - "ieee_export.bib"
+    format: "bibtex"
+    description: "IEEE Xplore exports"
+
+  # ACM Digital Library
+  acm:
+    enabled: true
+    base_url: "https://raw.githubusercontent.com/OliveiraEdu/R/master/data"
+    files:
+      - "acm.bib"
+      - "acm_export.bib"
+    format: "bibtex"
+    description: "ACM Digital Library exports"
+
+  # Scopus
+  scopus:
+    enabled: true
+    base_url: "https://raw.githubusercontent.com/OliveiraEdu/R/master/data"
+    files:
+      - "scopus.bib"
+      - "scopus.csv"
+      - "scopus_export.bib"
+      - "scopus_export.csv"
+    format: "auto"  # auto-detect from extension
+    description: "Scopus exports"
+
+  # PubMed
+  pubmed:
+    enabled: true
+    base_url: "https://raw.githubusercontent.com/OliveiraEdu/R/master/data"
+    files:
+      - "pubmed.bib"
+      - "pubmed.csv"
+      - "pubmed_export.bib"
+    format: "auto"
+    description: "PubMed/MEDLINE exports"
+
+  # ArXiv (uses API, not file download)
+  arxiv:
+    enabled: true
+    api_endpoint: "https://export.arxiv.org/api/query"
+    use_api: true
+    description: "ArXiv preprints via API"
+
+# Download settings
+download:
+  output_dir: "inputs"
+  overwrite_existing: false
+  verify_ssl: true
+  timeout_seconds: 30
+  retry_attempts: 3
+  cache_downloads: true
+  cache_dir: "cache/downloads"
+
+# Import settings
+import:
+  auto_deduplicate: true
+  skip_invalid_entries: true
+  validate_dois: true

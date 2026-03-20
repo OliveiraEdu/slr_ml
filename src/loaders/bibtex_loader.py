@@ -1,5 +1,4 @@
 """BibTeX loader for importing papers from BibTeX files."""
-import hashlib
 import re
 from pathlib import Path
 from typing import Optional
@@ -7,6 +6,7 @@ from typing import Optional
 import bibtexparser
 
 from src.models.schemas import Paper, SourceName
+from src.utils.text_utils import clean_bibtex_text, clean_doi, generate_bibtex_id
 
 
 class BibtexLoader:
@@ -92,20 +92,11 @@ class BibtexLoader:
 
     def _generate_id(self, entry: dict) -> str:
         """Generate a unique ID for the paper."""
-        title = entry.get("title", "")
-        doi = entry.get("doi", "")
-        author = entry.get("author", "")
-
-        content = f"{title}{doi}{author}".encode("utf-8")
-        return hashlib.md5(content).hexdigest()[:16]
+        return generate_bibtex_id(entry)
 
     def _clean_text(self, text: str) -> str:
         """Clean BibTeX field text."""
-        if not text:
-            return ""
-        text = re.sub(r"\s+", " ", text)
-        text = text.strip("{}")
-        return text
+        return clean_bibtex_text(text)
 
     def _parse_authors(self, author_str: str) -> list[str]:
         """Parse author string into list of authors."""
@@ -124,11 +115,9 @@ class BibtexLoader:
 
         return cleaned
 
-    def _clean_doi(self, doi: str) -> str:
+    def _clean_doi(self, doi: str) -> Optional[str]:
         """Clean DOI string."""
-        doi = doi.strip()
-        doi = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", doi)
-        return doi
+        return clean_doi(doi)
 
     def _parse_keywords(self, keywords_str: str) -> list[str]:
         """Parse keywords string into list."""

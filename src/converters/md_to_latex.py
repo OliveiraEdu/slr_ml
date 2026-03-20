@@ -60,9 +60,9 @@ def convert_markdown_to_latex(
 
     latex = re.sub(r'^\s*(\d+)\. (.+)$', r'\\item \2', latex, flags=re.MULTILINE)
 
-    latex = _convert_lists(latex)
-
     latex = _convert_tables(latex)
+
+    latex = _convert_lists(latex)
 
     latex = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', latex)
 
@@ -130,10 +130,10 @@ def _convert_tables(latex: str) -> str:
     
     while i < len(lines):
         line = lines[i]
-        if line.strip().startswith('|'):
+        if '|' in line and line.strip().startswith('|'):
             table_lines = [line]
             j = i + 1
-            while j < len(lines) and lines[j].strip().startswith('|'):
+            while j < len(lines) and '|' in lines[j]:
                 table_lines.append(lines[j])
                 j += 1
             
@@ -211,76 +211,6 @@ def _parse_alignments(separator_line: str) -> list[str]:
         else:
             alignments.append('l')
     return alignments
-
-    def parse_alignments(separator_line: str) -> list[str]:
-        """Parse column alignments from markdown separator."""
-        cells = separator_line.strip('|').split('|')
-        alignments = []
-        for cell in cells:
-            cell = cell.strip()
-            if cell.startswith(':') and cell.endswith(':'):
-                alignments.append('c')
-            elif cell.startswith(':'):
-                alignments.append('l')
-            elif cell.endswith(':'):
-                alignments.append('r')
-            else:
-                alignments.append('l')
-        return alignments
-
-    def replace_table(match):
-        lines = match.group(0).strip().split('\n')
-        
-        separator_idx = None
-        for i, line in enumerate(lines):
-            stripped = line.strip('|').replace('-', '').replace(':', '').replace(' ', '')
-            if not stripped:
-                separator_idx = i
-                break
-        
-        if separator_idx is None:
-            return match.group(0)
-        
-        header_lines = lines[:separator_idx]
-        body_lines = lines[separator_idx + 1:]
-        
-        if not header_lines or not body_lines:
-            return match.group(0)
-        
-        alignments = parse_alignments(lines[separator_idx])
-        
-        rows = []
-        for line in header_lines + body_lines:
-            if re.match(r'[\|: -]+$', line):
-                continue
-            cells = [c.strip() for c in line.strip('|').split('|')]
-            rows.append(cells)
-        
-        if len(rows) < 2:
-            return match.group(0)
-        
-        num_cols = len(rows[0])
-        col_spec = '|' + ''.join(alignments[:num_cols]) + '|'
-        
-        result = [f'\\begin{{table}}[htbp]']
-        result.append('\\centering')
-        result.append('\\caption{Table Title}')
-        result.append(f'\\begin{{tabular}}{{{col_spec}}}')
-        result.append('\\toprule')
-        
-        result.append(' & '.join(rows[0]) + ' \\\\')
-        result.append('\\midrule')
-        
-        for row in rows[1:]:
-            result.append(' & '.join(row) + ' \\\\')
-        
-        result.append('\\bottomrule')
-        result.append('\\end{tabular}')
-        result.append('\\end{table}')
-        
-        return '\n'.join(result)
-
-    return table_pattern.sub(replace_table, latex)
 
 
 def wrap_in_document(latex_content: str, title: str = "Document") -> str:

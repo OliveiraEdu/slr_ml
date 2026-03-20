@@ -4,7 +4,10 @@ import re
 from enum import Enum
 from typing import Optional
 
-from src.models.schemas import Paper, ScreeningResult, RankingWeights
+from src.models.schemas import (
+    Paper, ScreeningResult, RankingWeights, ConfidenceBand, 
+    ScreeningDecision, ScreeningPhase, ScreeningMethod
+)
 
 
 class BackendType(str, Enum):
@@ -109,14 +112,42 @@ class SciBERTClassifier:
             return "cpu"
         return self.device
 
+    def _calculate_confidence_band(self, score: float, threshold: float = 0.5) -> tuple[ConfidenceBand, float]:
+        """Calculate confidence band based on score distance from threshold.
+        
+        Confidence is measured as how far the score is from the decision boundary.
+        - HIGH: score >= 0.75 or score <= 0.25 (far from threshold)
+        - MEDIUM: score >= 0.55 or score <= 0.45 (near threshold but not critical)
+        - LOW: score between 0.45 and 0.55 (uncertain zone)
+        
+        Returns:
+            Tuple of (ConfidenceBand, confidence_score)
+        """
+        distance_from_threshold = abs(score - threshold)
+        
+        if score >= 0.75 or score <= 0.25:
+            band = ConfidenceBand.HIGH
+            confidence = min(1.0, distance_from_threshold * 2)
+        elif score >= 0.55 or score <= 0.45:
+            band = ConfidenceBand.MEDIUM
+            confidence = distance_from_threshold * 2
+        else:
+            band = ConfidenceBand.LOW
+            confidence = distance_from_threshold * 2
+        
+        return band, confidence
+
     def classify_relevance(
         self,
         paper: Paper,
         include_prompt: str,
         exclude_prompt: str,
         threshold: float = 0.5,
+        phase: ScreeningPhase = ScreeningPhase.TITLE_ABSTRACT,
     ) -> ScreeningResult:
         """Classify paper relevance using zero-shot approach."""
+        
+        screened_by = ScreeningMethod.ML
         
         # Get relevance score based on backend
         if self.backend == BackendType.KEYWORD:
@@ -134,6 +165,11 @@ class SciBERTClassifier:
         else:
             result = self._classify_pytorch(paper, include_prompt, threshold)
         
+        # Calculate confidence band
+        confidence_band, confidence_score = self._calculate_confidence_band(
+            result.relevance_score, threshold
+        )
+        
         # Calculate citation and recency scores
         citation_score = self._calculate_citation_score(paper)
         recency_score = self._calculate_recency_score(paper)
@@ -146,9 +182,26 @@ class SciBERTClassifier:
             recency_score * w.recency
         )
         
+        # Determine decision based on threshold
+        if result.relevance_score >= threshold:
+            decision = ScreeningDecision.INCLUDE
+        else:
+            decision = ScreeningDecision.EXCLUDE
+        
+        # If in uncertain band, set decision to uncertain
+        if confidence_band == ConfidenceBand.LOW:
+            decision = ScreeningDecision.UNCERTAIN
+        
+        # Update result with all fields
+        result.phase = phase
         result.citation_score = citation_score
         result.recency_score = recency_score
         result.composite_score = composite
+        result.confidence = confidence_score
+        result.confidence_band = confidence_band
+        result.decision = decision
+        result.screened_by = screened_by
+        result.relevance_label = decision.value
         
         return result
     
@@ -168,38 +221,80 @@ class SciBERTClassifier:
             return 0.0
         return max(0.0, min(1.0, (year - min_year) / (current_year - min_year)))
 
-    def _classify_keyword(self, paper: Paper, threshold: float = 0.5) -> ScreeningResult:
-        """Classify using keyword matching (fallback when ML not available)."""
+    def _classify_keyword(
+        self, 
+        paper: Paper, 
+        threshold: float = 0.5,
+        relevant_keywords: Optional[list[str]] = None,
+        exclusion_keywords: Optional[list[str]] = None,
+    ) -> ScreeningResult:
+        """Classify using enhanced keyword matching with domain-specific boosting.
+        
+        Scoring strategy:
+        - Required keywords: High weight (0.5) - core concepts
+        - Relevant keywords: Medium weight (0.35) - related concepts
+        - Exclusion keywords: Penalty (0.15) - non-relevant patterns
+        
+        Also applies boosting for:
+        - Compound phrases (e.g., "machine-actionable" > "machine" + "actionable")
+        - Keyword frequency (multiple mentions = higher score)
+        """
         text = self._prepare_text(paper).lower()
+        text_lower = text.lower()
         
         required_keywords = self.keywords.get("required", [])
         optional_keywords = self.keywords.get("optional", [])
+        relevant_keywords = relevant_keywords or []
+        exclusion_keywords = exclusion_keywords or []
         
-        required_matches = sum(1 for kw in required_keywords if kw.lower() in text)
-        optional_matches = sum(1 for kw in optional_keywords if kw.lower() in text)
+        # Count required keyword matches with frequency
+        required_score = 0.0
+        for kw in required_keywords:
+            kw_lower = kw.lower()
+            if kw_lower in text_lower:
+                count = text_lower.count(kw_lower)
+                required_score += min(count, 3) * 0.5
         
-        # Calculate score
+        # Normalize required score
         max_required = len(required_keywords) if required_keywords else 1
-        max_optional = len(optional_keywords) if optional_keywords else 1
+        required_normalized = min(required_score / max_required, 1.0)
         
-        required_score = required_matches / max_required
-        optional_score = optional_matches / max_optional
+        # Count relevant keyword matches
+        relevant_score = 0.0
+        for kw in relevant_keywords:
+            kw_lower = kw.lower()
+            if kw_lower in text_lower:
+                count = text_lower.count(kw_lower)
+                relevant_score += min(count, 3) * 0.35
         
-        # Weight: required keywords more important
-        score = (required_score * 0.7) + (optional_score * 0.3)
+        # Normalize relevant score
+        max_relevant = len(relevant_keywords) if relevant_keywords else 1
+        relevant_normalized = min(relevant_score / max_relevant, 1.0)
         
-        if score >= threshold:
-            decision = "include"
-        else:
-            decision = "exclude"
+        # Check exclusion keywords (reduce score)
+        exclusion_penalty = 0.0
+        for kw in exclusion_keywords:
+            kw_lower = kw.lower()
+            if kw_lower in text_lower:
+                exclusion_penalty += 0.15
+        
+        # Calculate final score with weights
+        score = (required_normalized * 0.5) + (relevant_normalized * 0.35)
+        score = max(0.0, score - exclusion_penalty)
+        
+        # Apply compound phrase boost (phrases with hyphens/underscores are more specific)
+        compound_boost = 0.0
+        for kw in required_keywords + optional_keywords:
+            if '-' in kw or '_' in kw or ' ' in kw:
+                kw_lower = kw.lower()
+                if kw_lower in text_lower:
+                    compound_boost += 0.05
+        score = min(score + compound_boost, 1.0)
         
         return ScreeningResult(
             paper_id=paper.id,
-            stage="title_abstract",
             relevance_score=score,
-            relevance_label=decision,
-            decision=decision,
-            confidence=abs(score - 0.5) * 2,
+            relevance_label="unclassified",
         )
 
     def _classify_pytorch(self, paper: Paper, prompt: str, threshold: float) -> ScreeningResult:
@@ -225,15 +320,10 @@ class SciBERTClassifier:
             probs = torch.softmax(outputs.logits, dim=1)
             score = probs[0][1].item()
 
-        decision = "include" if score >= threshold else "exclude"
-
         return ScreeningResult(
             paper_id=paper.id,
-            stage="title_abstract",
             relevance_score=score,
-            relevance_label=decision,
-            decision=decision,
-            confidence=abs(score - 0.5) * 2,
+            relevance_label="unclassified",
         )
 
     def _classify_ctranslate2(self, paper: Paper, prompt: str, threshold: float) -> ScreeningResult:
@@ -256,15 +346,11 @@ class SciBERTClassifier:
         probs = [e / sum_exp for e in exp_logits]
         
         score = probs[1] if len(probs) > 1 else 0.5
-        decision = "include" if score >= threshold else "exclude"
 
         return ScreeningResult(
             paper_id=paper.id,
-            stage="title_abstract",
             relevance_score=score,
-            relevance_label=decision,
-            decision=decision,
-            confidence=abs(score - 0.5) * 2,
+            relevance_label="unclassified",
         )
 
     def classify_picoc(

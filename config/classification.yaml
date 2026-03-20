@@ -107,19 +107,60 @@ classification:
       description: "General-purpose systems not applicable to scientific data"
 
   # Keywords for matching
+  # Strategy: Multi-level matching with boosting
+  # - Required: Core concepts that MUST be present
+  # - Relevant: Supporting concepts that increase relevance
+  # - Exclusion: Patterns that indicate non-relevance
   keywords:
     required:
+      # Core maDMP concepts
+      - "machine-actionable"
+      - "maDMP"
+      - "data management plan"
+      - "DMP"
+      # Core blockchain concepts
       - "blockchain"
-      - "data"
-    optional:
+      - "distributed ledger"
+      - "smart contract"
+    relevant:
+      # Provenance concepts
       - "provenance"
-      - "metadata"
-      - "management"
-      - "research"
-      - "scientific"
+      - "data lineage"
+      - "chain of custody"
       - "verification"
-      - "Hyperledger"
+      - "audit"
+      # FAIR principles
+      - "FAIR principles"
+      - "FAIR"
+      - "metadata"
+      - "semantic"
+      - "PROV-O"
+      # Research data
+      - "scientific data"
+      - "research data"
+      - "open science"
+      - "reproducibility"
+      # Storage platforms
       - "IPFS"
+      - "decentralized"
+      - "repository"
+      - "storage"
+    exclusion:
+      # Non-research contexts (check carefully - may need manual review)
+      - "supply chain"
+      - "business process"
+      - "DMP tool"  # Software tools, not concept
+      - "business intelligence"
+      - "financial"
+      # Non-implementation papers
+      - "position paper"
+      - "vision paper"
+
+  # Confidence band thresholds
+  confidence_bands:
+    high: 0.75     # Score >= 0.75 or <= 0.25 → High confidence
+    medium: 0.55    # Score >= 0.55 or <= 0.45 → Medium confidence
+    low: 0.45       # Score between 0.45 and 0.55 → Low confidence (manual review required)
 
   # Thresholds for screening decisions
   thresholds:

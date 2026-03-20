@@ -5,6 +5,161 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-03-20
+
+### Phase 1: ML-Assisted Screening (Complete)
+
+#### Added
+- **Confidence Calibration**: New `ConfidenceBand` enum (high/medium/low) with threshold-based classification
+- **Enhanced Classifier**: Multi-level keyword matching with:
+  - Required keywords (50% weight)
+  - Relevant keywords (35% weight)  
+  - Exclusion keywords (15% penalty)
+  - Compound phrase boosting (for "machine-actionable", "data management plan")
+  - Keyword frequency scoring
+- **New Screening Enums**: 
+  - `ConfidenceBand` - high/medium/low for confidence tiers
+  - `ScreeningMethod` - ml/manual/hybrid tracking
+  - `ScreeningDecision` - include/exclude/uncertain/pending
+  - `ScreeningPhase` - title_abstract/full_text stages
+- **Manual Review Queue**: `GET /screening/queue/uncertain` - Papers needing manual review
+- **Screening Statistics**: `GET /screening/statistics` - PRISMA-ready statistics
+- **Manual Review Update**: `POST /screening/review` - Update decisions manually
+
+#### Updated
+- **ScreeningResult Schema**: Added fields for confidence_band, screened_by, exclusion_category, notes
+- **Classification Config**: Enhanced with 3-level keyword strategy
+- **PRISMA Config**: Domain-specific exclusion reasons for maDMP/blockchain research
+
+#### Domain Configuration
+Updated `config/classification.yaml` with maDMP/blockchain keywords:
+- **Required**: machine-actionable, maDMP, data management plan, blockchain, distributed ledger
+- **Relevant**: provenance, FAIR, metadata, scientific data, IPFS
+- **Exclusion**: supply chain, business process, DMP tool
+
+### Phase 2: PRISMA 2020 Compliance (Complete)
+
+#### Added
+- **PRISMA 2020 Checklist Schema**: Full 27-item checklist with models:
+  - `PrismaChecklistItem` - Individual checklist items
+  - `PrismaProtocol` - Protocol metadata (title, registration, dates)
+  - `PrismaChecklist` - Complete checklist container
+- **Checklist Endpoints**:
+  - `GET /prisma/checklist` - Get full PRISMA 2020 checklist
+  - `PUT /prisma/protocol` - Update protocol information
+  - `PUT /prisma/checklist/item` - Update individual item status
+  - `GET /prisma/checklist/report` - Get checklist grouped by section with completeness score
+  - `POST /prisma/report/full` - Generate complete PRISMA report with checklist
+- **Makefile Updates**: Added commands for Docker deployment and API testing
+
+### Phase 3: Two-Stage Screening Workflow (Complete)
+
+#### Added
+- **Full-Text Schema Extensions**:
+  - `FullTextSource` enum (DOI, ArXiv, Manual, Unavailable, Flagged)
+  - `Paper.full_text_source`, `full_text_path`, `flagged_reason`
+  - `ScreeningResult.stage_1_decision`, `stage_2_decision`, `full_text_retrieved`
+- **Two-Stage Screening Endpoints**:
+  - `GET /screening/progression` - Paper flow through stages
+  - `GET /screening/queue/stage2` - Papers eligible for Stage 2
+  - `POST /screening/stage2` - Run Stage 2 (full-text) screening
+- **Full-Text Management Endpoints**:
+  - `GET /papers/retrievable` - Papers eligible for FT retrieval
+  - `GET /papers/flagged` - Papers flagged for no DOI
+  - `POST /papers/flag/{id}` - Flag paper for no DOI
+  - `GET /papers/{id}/fulltext` - Get paper's full-text
+  - `POST /papers/{id}/fulltext` - Attach full-text content
+  - `GET /papers/progress/fulltext` - FT retrieval progress
+- **DOI Flagging Logic**: Papers without DOI are flagged and excluded from Stage 2 (except ArXiv)
+- **Local Storage**: Full-text stored in `outputs/fulltext/`
+- **PRISMA Flow Updates**: Added `flagged_no_doi`, `arxiv_preprints`, `full_text_retrieved`
+
+### Phase 4: Data Extraction & Synthesis (Complete)
+
+#### Added
+- **Enhanced Extraction Schema**: `ExtractionData` model with 35+ fields for maDMP/blockchain research:
+  - Blockchain: platform, type, consensus mechanism, smart contract language
+  - Data Management: maDMP standard, metadata schema, FAIR compliance
+  - Provenance: model, approach, verification mechanism
+  - Storage: integration type, partitioning, encryption
+  - Access Control: permission model, mechanism
+- **Synthesis Generator**: `SynthesisGenerator` class with comprehensive analysis:
+  - `_analyze_blockchains()` - Platform and consensus analysis
+  - `_analyze_platforms()` - Technology distribution
+  - `_analyze_approaches()` - Research approach breakdown
+  - `_analyze_evaluations()` - Evaluation method analysis
+  - `_identify_gaps()` - Research gap detection
+  - `_identify_trends()` - Trend identification
+- **Synthesis Endpoints**:
+  - `GET /prisma/extraction/template` - Get maDMP extraction form template
+  - `GET /prisma/synthesis` - Get synthesis statistics
+  - `GET /prisma/synthesis/platforms` - Platform analysis
+  - `GET /prisma/synthesis/distributions` - Distribution statistics
+  - `GET /prisma/synthesis/gaps` - Research gaps identification
+  - `POST /prisma/synthesis/report` - Generate synthesis report
+- **Quality Assessment Endpoints**:
+  - `POST /prisma/quality/assess` - Run quality assessment
+  - `GET /prisma/quality/{paper_id}` - Get quality for paper
+  - `PUT /prisma/quality/{paper_id}` - Update quality assessment
+- **MMAT Quality Scoring**: Configurable criteria in `config/extraction.yaml`
+
+### Bug Fixes
+- Fixed `classifier` undefined error in `POST /screening/stage2` endpoint
+
+### New Endpoints
+- `POST /screening/review/batch` - Batch update multiple paper decisions
+- `GET /prisma/extraction/export` - Export extraction data as CSV
+- `GET /prisma/quality/export` - Export quality assessment as CSV
+- `GET /prisma/quality/{paper_id}` - Get quality for specific paper
+- `PUT /prisma/quality/{paper_id}` - Update quality assessment
+- `POST /prisma/quality/assess` - Run quality assessment
+
+### Improvements
+- Auto-config loading on startup (no manual `/config/load` needed)
+- API version updated to 0.5.0
+
+### Data Source Downloads (Complete)
+
+#### Added
+- **URL Downloader**: `src/connectors/url_downloader.py` for downloading from remote URLs
+- **Data Source Configuration**: `config/data_sources.yaml` with GitHub repository URLs
+- **Download Endpoints**:
+  - `GET /papers/sources` - List configured data sources
+  - `POST /papers/download` - Download a file from URL
+  - `POST /papers/download-all` - Download all enabled sources
+  - `POST /papers/import-from-url` - Download and import in one step
+- **Makefile Commands**: `make sources`, `make download-all`, `make download-and-import`
+
+## [0.4.0] - 2026-03-20
+
+### Refactored
+- **Split API into Routers**: `src/api/main.py` (882 lines) split into modular routers:
+  - `routers/papers.py` - Paper import/export endpoints
+  - `routers/screening.py` - ML screening workflow
+  - `routers/prisma.py` - PRISMA reporting
+  - `routers/enrichment.py` - DOI metadata enrichment
+  - `routers/config.py` - Configuration management
+  - `routers/converters.py` - Document format conversion
+- **Extracted Shared Utilities**: Created `src/utils/text_utils.py` with shared functions:
+  - `clean_text()` - Text whitespace normalization
+  - `clean_bibtex_text()` - BibTeX field cleaning
+  - `clean_doi()` / `normalize_doi()` - DOI normalization
+  - `generate_paper_id()` / `generate_bibtex_id()` - Paper ID generation
+- **Added Proper Logging**: Replaced debug print statements with `logging` module
+- **Improved Error Handling**: Better exception handling in health check endpoint
+
+### Fixed
+- **CSV Loader Bug**: Fixed duplicate separator in author parsing (`[";", ";"]` -> `[";", ","]`)
+- **Dead Code Removed**: Removed unreachable code from `src/converters/md_to_latex.py` (lines 215-283)
+
+### Added
+- **Test Suite**: Comprehensive pytest tests in `tests/`:
+  - `test_text_utils.py` - Text utility function tests
+  - `test_loaders.py` - BibTeX and CSV loader tests
+  - `test_converters.py` - Markdown to LaTeX converter tests
+  - `test_connectors.py` - DOI and ArXiv connector tests
+- **Configuration**: `tests/conftest.py` with pytest setup
+
 ## [0.3.0] - 2026-03-18
 
 ### Added

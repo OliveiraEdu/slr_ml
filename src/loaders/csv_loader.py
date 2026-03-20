@@ -1,11 +1,11 @@
 """CSV loader for importing papers from CSV files."""
 import csv
-import hashlib
 import re
 from pathlib import Path
 from typing import Optional
 
 from src.models.schemas import Paper, SourceName
+from src.utils.text_utils import clean_text, clean_doi, generate_paper_id
 
 
 class CsvLoader:
@@ -139,10 +139,7 @@ class CsvLoader:
 
     def _clean_text(self, text: str) -> str:
         """Clean text field."""
-        if not text:
-            return ""
-        text = re.sub(r"\s+", " ", text)
-        return text.strip()
+        return clean_text(text)
 
     def _parse_authors(self, author_str: str) -> list[str]:
         """Parse author string into list."""
@@ -151,7 +148,7 @@ class CsvLoader:
 
         author_str = self._clean_text(author_str)
 
-        for sep in [";", ";"]:
+        for sep in [";", ","]:
             if sep in author_str:
                 authors = author_str.split(sep)
                 return [a.strip() for a in authors if a.strip()]
@@ -159,11 +156,9 @@ class CsvLoader:
         authors = re.split(r",\s*(?=[A-Z])", author_str)
         return [a.strip() for a in authors if a.strip()]
 
-    def _clean_doi(self, doi: str) -> str:
+    def _clean_doi(self, doi: str) -> Optional[str]:
         """Clean DOI string."""
-        doi = doi.strip()
-        doi = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", doi)
-        return doi
+        return clean_doi(doi)
 
     def _parse_year(self, year_str: str) -> Optional[int]:
         """Parse year from string."""
@@ -182,10 +177,9 @@ class CsvLoader:
         keywords = re.split(r"[,;]", keywords_str)
         return [k.strip() for k in keywords if k.strip()]
 
-    def _generate_id(self, title: str, doi: str, authors: list[str]) -> str:
+    def _generate_id(self, title: str, doi: Optional[str], authors: list[str]) -> str:
         """Generate unique ID."""
-        content = f"{title}{doi}{','.join(authors[:3])}".encode("utf-8")
-        return hashlib.md5(content).hexdigest()[:16]
+        return generate_paper_id(title, doi, authors)
 
 
 def load_csv(

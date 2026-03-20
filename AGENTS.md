@@ -21,10 +21,10 @@ uvicorn src.api.main:app --reload
 pytest
 
 # Run specific test file
-pytest tests/test_prisma_generator.py
+pytest tests/test_text_utils.py
 
 # Run specific test function
-pytest tests/test_prisma_generator.py::test_generate_flow_data
+pytest tests/test_loaders.py::TestBibtexLoader::test_load_bibtex_single_entry
 
 # Run with coverage
 pytest --cov=src --cov-report=html
@@ -143,17 +143,26 @@ isort src/
 ```
 slr_ml/
 ├── src/
-│   ├── api/          # FastAPI endpoints
-│   ├── ml/           # ML classifiers
-│   ├── pipeline/     # Processing pipelines
-│   ├── loaders/      # File loaders
-│   ├── connectors/   # External APIs
-│   └── models/       # Schemas and config
-├── config/           # YAML configuration files
-├── inputs/           # Input papers
-├── outputs/          # Generated reports
-├── tests/            # Test files (create if needed)
-└── docs/             # Documentation
+│   ├── api/              # FastAPI application
+│   │   └── routers/      # API route modules
+│   │       ├── papers.py      # Paper import/export endpoints
+│   │       ├── screening.py    # ML screening workflow
+│   │       ├── prisma.py       # PRISMA reporting
+│   │       ├── enrichment.py   # DOI enrichment
+│   │       ├── config.py       # Configuration management
+│   │       └── converters.py   # Format conversion
+│   ├── ml/               # ML classifiers
+│   ├── pipeline/         # Processing pipelines
+│   ├── loaders/          # File loaders (BibTeX, CSV)
+│   ├── connectors/       # External APIs (DOI, ArXiv)
+│   ├── converters/      # Document converters (MD to LaTeX)
+│   ├── models/           # Schemas and config
+│   └── utils/            # Shared utilities
+├── config/               # YAML configuration files
+├── inputs/               # Input papers
+├── outputs/              # Generated reports
+├── tests/                # Test files
+└── docs/                 # Documentation
 ```
 
 ---
@@ -163,7 +172,7 @@ slr_ml/
 1. Create config options in YAML if behavior needs to be configurable
 2. Add Pydantic models in `src/models/schemas.py`
 3. Implement logic in appropriate `src/` subdirectory
-4. Add API endpoints in `src/api/main.py`
+4. Add API endpoints in the appropriate router module under `src/api/routers/`
 5. Add tests in `tests/`
 6. Update CHANGELOG.md
 

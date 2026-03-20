@@ -5,7 +5,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from src.models.schemas import Paper, PrismaConfig, PrismaFlowData, ScreeningResult
+from src.models.schemas import (
+    Paper, PrismaConfig, PrismaFlowData, ScreeningResult, 
+    ScreeningPhase, ScreeningDecision, SourceName, FullTextSource
+)
 
 
 class PrismaGenerator:
@@ -42,45 +45,76 @@ class PrismaGenerator:
         flow.identification_removed_duplicates = duplicates
         flow.identification_after_duplicates = len(papers) - duplicates
 
+        stage_1_results = [r for r in results if r.phase == ScreeningPhase.TITLE_ABSTRACT]
+        stage_2_results = [r for r in results if r.phase == ScreeningPhase.FULL_TEXT]
+
         abstract_excluded = sum(
-            1 for r in results
-            if r.stage == "title_abstract" and r.decision == "exclude"
+            1 for r in stage_1_results
+            if r.decision == ScreeningDecision.EXCLUDE
         )
         flow.screening_abstract_excluded = abstract_excluded
 
         excluded_reasons = {}
-        for r in results:
-            if r.stage == "title_abstract" and r.decision == "exclude" and r.reason:
+        for r in stage_1_results:
+            if r.decision == ScreeningDecision.EXCLUDE and r.reason:
                 reason = r.reason
                 excluded_reasons[reason] = excluded_reasons.get(reason, 0) + 1
         flow.screening_abstract_excluded_reasons = excluded_reasons
 
-        flow.screening_sought_retrieval = sum(
-            1 for r in results
-            if r.stage == "title_abstract" and r.decision == "include"
+        stage_1_included = sum(
+            1 for r in stage_1_results
+            if r.decision == ScreeningDecision.INCLUDE
         )
+        flow.screening_sought_retrieval = stage_1_included
+        flow.stage_2_eligible = stage_1_included
 
         fulltext_excluded = sum(
-            1 for r in results
-            if r.stage == "full_text" and r.decision == "exclude"
+            1 for r in stage_2_results
+            if r.decision == ScreeningDecision.EXCLUDE
         )
         flow.eligibility_fulltext_excluded = fulltext_excluded
 
         ft_excluded_reasons = {}
-        for r in results:
-            if r.stage == "full_text" and r.decision == "exclude" and r.reason:
+        for r in stage_2_results:
+            if r.decision == ScreeningDecision.EXCLUDE and r.reason:
                 reason = r.reason
                 ft_excluded_reasons[reason] = ft_excluded_reasons.get(reason, 0) + 1
         flow.eligibility_fulltext_excluded_reasons = ft_excluded_reasons
 
-        flow.included_studies = sum(
-            1 for r in results
-            if r.decision == "include"
-        )
+        stage_2_screened = len(stage_2_results)
+        flow.stage_2_screened = stage_2_screened
+
+        paper_map = {p.id: p for p in papers}
+        flagged_count = 0
+        arxiv_count = 0
+        ft_retrieved_count = 0
+        
+        for paper_id in [r.paper_id for r in stage_1_results if r.decision == ScreeningDecision.INCLUDE]:
+            paper = paper_map.get(paper_id)
+            if paper:
+                if paper.source == SourceName.ARXIV:
+                    arxiv_count += 1
+                if paper.flagged_reason:
+                    flagged_count += 1
+                if paper.full_text or paper.full_text_path:
+                    ft_retrieved_count += 1
+
+        flow.flagged_no_doi = flagged_count
+        flow.arxiv_preprints = arxiv_count
+        flow.full_text_retrieved = ft_retrieved_count
+        flow.full_text_unavailable = flagged_count
+
+        if stage_2_results:
+            flow.included_studies = sum(
+                1 for r in stage_2_results
+                if r.decision == ScreeningDecision.INCLUDE
+            )
+        else:
+            flow.included_studies = stage_1_included
 
         flow.total_screened = len(results)
         flow.total_excluded = sum(
-            1 for r in results if r.decision == "exclude"
+            1 for r in results if r.decision == ScreeningDecision.EXCLUDE
         )
 
         return flow

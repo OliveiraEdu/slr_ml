@@ -6,6 +6,7 @@ from typing import Optional
 import arxiv
 
 from src.models.schemas import Paper, SourceName
+from src.utils.text_utils import clean_text
 
 
 class ArxivConnector:
@@ -114,10 +115,7 @@ class ArxivConnector:
 
     def _clean_text(self, text: str) -> str:
         """Clean text field."""
-        if not text:
-            return ""
-        text = re.sub(r"\s+", " ", text)
-        return text.strip()
+        return clean_text(text)
 
 
 def search_arxiv(
