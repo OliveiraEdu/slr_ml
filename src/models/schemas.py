@@ -12,6 +12,7 @@ class SourceName(str, Enum):
     ACM = "acm"
     SCOPUS = "scopus"
     ARXIV = "arxiv"
+    PUBMED = "pubmed"
 
 
 class FileFormat(str, Enum):
@@ -76,6 +77,7 @@ class SourcesConfig(BaseModel):
     acm: SourceConfig = Field(default_factory=SourceConfig)
     scopus: SourceConfig = Field(default_factory=SourceConfig)
     arxiv: ArxivConfig = Field(default_factory=ArxivConfig)
+    pubmed: SourceConfig = Field(default_factory=SourceConfig)
     doi: DOIConfig = Field(default_factory=DOIConfig)
 
 

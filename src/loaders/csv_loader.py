@@ -57,6 +57,16 @@ class CsvLoader:
                 "journal": ["journal", "Journal", "source", "Source", "publication"],
                 "keywords": ["keywords", "Keywords", "KEYWORDS"],
             },
+            "pubmed": {
+                "title": ["Title"],
+                "authors": ["Authors"],
+                "abstract": None,
+                "year": ["Publication Year"],
+                "doi": ["DOI"],
+                "url": None,
+                "journal": ["Journal/Book"],
+                "keywords": None,
+            },
         }
 
     def load_file(
