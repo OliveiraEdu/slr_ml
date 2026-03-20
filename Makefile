@@ -152,40 +152,39 @@ status:
 
 # API Testing commands (executed from within Docker)
 health:
-	@echo "Waiting for API to be ready..."
-	@sleep 2
-	@docker compose exec -T api curl -s http://localhost:8000/health 2>/dev/null | python3 -m json.tool || docker compose exec -T api curl -s http://localhost:8000/health
+	@echo "Checking API health..."
+	@curl -s http://localhost:8000/health 2>/dev/null | python3 -m json.tool || echo "API not reachable at localhost:8000"
 
 import-sample:
 	@echo "Importing sample papers from inputs/ directory..."
-	@docker compose exec -T api curl -s -X POST http://localhost:8000/papers/import-directory \
+	@curl -s -X POST http://localhost:8000/papers/import-directory \
 		-H "Content-Type: application/json" \
 		-d '{"directory": "inputs", "auto_detect": true}' | python3 -m json.tool
 
 screen:
 	@echo "Running ML screening with confidence calibration..."
-	@docker compose exec -T api curl -s -X POST http://localhost:8000/screening/run \
+	@curl -s -X POST http://localhost:8000/screening/run \
 		-H "Content-Type: application/json" \
 		-d '{"threshold": 0.5}' | python3 -m json.tool
 
 queue:
 	@echo "Papers requiring manual review (uncertain/low confidence)..."
-	@docker compose exec -T api curl -s "http://localhost:8000/screening/queue/uncertain?limit=20" \
+	@curl -s "http://localhost:8000/screening/queue/uncertain?limit=20" \
 		| python3 -m json.tool
 
 stats:
 	@echo "Screening statistics for PRISMA reporting..."
-	@docker compose exec -T api curl -s http://localhost:8000/screening/statistics \
+	@curl -s http://localhost:8000/screening/statistics \
 		| python3 -m json.tool
 
 rank:
 	@echo "Top papers by relevance..."
-	@docker compose exec -T api curl -s "http://localhost:8000/screening/rank?n=20&sort_by=relevance" \
+	@curl -s "http://localhost:8000/screening/rank?n=20&sort_by=relevance" \
 		| python3 -m json.tool
 
 prisma-flow:
 	@echo "PRISMA flow diagram data..."
-	@docker compose exec -T api curl -s http://localhost:8000/prisma/flow \
+	@curl -s http://localhost:8000/prisma/flow \
 		| python3 -m json.tool
 
 # Code quality
@@ -199,15 +198,24 @@ typecheck:
 	@echo "Running mypy type checker..."
 	@python3 -m mypy src/ 2>/dev/null || echo "Install mypy: pip install mypy"
 
-# Test commands
+# Test commands (run from host)
 test:
-	pytest -v tests/
+	@echo "Running unit tests..."
+	@pytest -v tests/ --ignore=tests/test_integration.py
+
+test-integration:
+	@echo "Running integration tests against API..."
+	@pytest -v tests/test_integration.py -k "test_"
+
+test-all:
+	@echo "Running all tests (unit + integration)..."
+	@pytest -v tests/
 
 test-watch:
-	pytest -v tests/ --watch 2>/dev/null || pytest -v tests/
+	@pytest -v tests/ --ignore=tests/test_integration.py --watch 2>/dev/null || pytest -v tests/ --ignore=tests/test_integration.py
 
 coverage:
-	pytest --cov=src --cov-report=html --cov-report=term tests/
+	@pytest --cov=src --cov-report=html --cov-report=term tests/ --ignore=tests/test_integration.py
 
 # Development helpers
 enter-api:
@@ -235,23 +243,23 @@ screening-workflow:
 # Data Source Download Commands
 sources:
 	@echo "Configured data sources from data_sources.yaml..."
-	@docker compose exec -T api curl -s http://localhost:8000/papers/sources \
+	@curl -s http://localhost:8000/papers/sources \
 		| python3 -m json.tool
 
 download-all:
 	@echo "Downloading all configured source files..."
-	@docker compose exec -T api curl -s -X POST http://localhost:8000/papers/download-all \
+	@curl -s -X POST http://localhost:8000/papers/download-all \
 		| python3 -m json.tool
 
 download-source:
 	@read -p "Enter source name (wos/ieee/acm/scopus/pubmed): " source; \
-	docker compose exec -T api curl -s -X POST "http://localhost:8000/papers/download-all" \
+	curl -s -X POST "http://localhost:8000/papers/download-all" \
 		-H "Content-Type: application/json" \
 		-d "{\"sources\": [\"$$source\"]}" | python3 -m json.tool
 
 import-downloaded:
 	@echo "Importing downloaded files..."
-	@docker compose exec -T api curl -s -X POST "http://localhost:8000/papers/import-downloaded?directory=inputs" \
+	@curl -s -X POST "http://localhost:8000/papers/import-downloaded?directory=inputs" \
 		| python3 -m json.tool
 
 download-and-import:
@@ -264,44 +272,44 @@ download-and-import:
 # Phase 3: Two-Stage Screening Workflow
 ft-retrievable:
 	@echo "Papers eligible for full-text retrieval..."
-	@docker compose exec -T api curl -s http://localhost:8000/papers/retrievable \
+	@curl -s http://localhost:8000/papers/retrievable \
 		| python3 -m json.tool
 
 ft-flagged:
 	@echo "Papers flagged for no DOI (excluded from Stage 2)..."
-	@docker compose exec -T api curl -s http://localhost:8000/papers/flagged \
+	@curl -s http://localhost:8000/papers/flagged \
 		| python3 -m json.tool
 
 ft-progress:
 	@echo "Full-text retrieval progress..."
-	@docker compose exec -T api curl -s http://localhost:8000/papers/progress/fulltext \
+	@curl -s http://localhost:8000/papers/progress/fulltext \
 		| python3 -m json.tool
 
 stage2-queue:
 	@echo "Papers eligible for Stage 2 (full-text) screening..."
-	@docker compose exec -T api curl -s "http://localhost:8000/screening/queue/stage2?limit=20" \
+	@curl -s "http://localhost:8000/screening/queue/stage2?limit=20" \
 		| python3 -m json.tool
 
 stage2-screen:
 	@echo "Running Stage 2 full-text screening..."
-	@docker compose exec -T api curl -s -X POST http://localhost:8000/screening/stage2 \
+	@curl -s -X POST http://localhost:8000/screening/stage2 \
 		-H "Content-Type: application/json" \
 		-d '{"threshold": 0.5}' | python3 -m json.tool
 
 progression:
 	@echo "Paper progression through screening stages..."
-	@docker compose exec -T api curl -s http://localhost:8000/screening/progression \
+	@curl -s http://localhost:8000/screening/progression \
 		| python3 -m json.tool
 
 # PRISMA 2020 commands
 checklist:
 	@echo "PRISMA 2020 Checklist..."
-	@docker compose exec -T api curl -s http://localhost:8000/prisma/checklist \
+	@curl -s http://localhost:8000/prisma/checklist \
 		| python3 -m json.tool | head -50
 
 prisma-report:
 	@echo "Generating full PRISMA 2020 report..."
-	@docker compose exec -T api curl -s -X POST "http://localhost:8000/prisma/report/full?format=markdown" \
+	@curl -s -X POST "http://localhost:8000/prisma/report/full?format=markdown" \
 		| python3 -m json.tool
 
 # Complete two-stage workflow
