@@ -32,8 +32,9 @@ tqdm>=4.66.0
 # For fast local inference with ctranslate2:
 # ctranslate2>=4.0
 # For full PyTorch support (installed in Dockerfile):
-# torch>=2.1.0
-# transformers>=4.35.0
+torch>=2.1.0
+transformers>=4.35.0
+datasets>=2.14.0
 
 # Testing
 pytest>=7.4.0
