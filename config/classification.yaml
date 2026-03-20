@@ -177,3 +177,46 @@ classification:
     full_text:
       enabled: true
       min_text_length: 200
+
+# Enhanced Screening Configuration
+enhanced_screening:
+  # Active Learning settings
+  active_learning:
+    enabled: true
+    initial_training_size: 50
+    batch_size: 20
+    max_iterations: 10
+    confidence_threshold: 0.15
+    sampling_strategy: "least_confident"  # Options: least_confident, margin, random, uncertainty
+
+  # Fine-tuning settings
+  fine_tuning:
+    enabled: true
+    model_name: "allenai/scibert_scivocab_uncased"
+    output_dir: "models/fine_tuned"
+    num_epochs: 3
+    per_device_batch_size: 8
+    learning_rate: 2e-5
+    fp16: true
+
+  # Snowballing settings
+  snowballing:
+    enabled: true
+    max_depth: 2
+    max_papers_per_source: 50
+    include_references: true
+    include_citations: true
+
+  # Citation ranking settings
+  citation_ranking:
+    enabled: true
+    min_citations: 0
+    include_threshold: 0.0
+
+  # Certainty-based screening
+  certainty_screening:
+    enabled: true
+    exclude_confidence: 0.80
+    include_confidence: 0.80
+    auto_exclude: true
+    auto_include: true
