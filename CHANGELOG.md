@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.0] - 2026-03-20
 
+### Infrastructure & Testing
+
+#### Added
+- **Integration Tests**: `tests/test_integration.py` - Tests run from host against running API
+- **New Makefile Commands**:
+  - `make test` - Unit tests only
+  - `make test-integration` - Integration tests against API
+  - `make test-all` - All tests
+  - `make coverage` - Tests with coverage
+
+#### Fixed
+- **Makefile Duplicates**: Removed duplicate `test` and `prisma-flow` targets
+- **Config Loading**: Auto-loads on startup with proper error logging
+- **YAML Syntax**: Fixed comment syntax (`- # comment` → `# comment`) in prisma.yaml
+- **Sources Schema**: Added DOIConfig to handle DOI configuration
+- **Stage2 Bug**: Fixed `classifier` undefined error in screening stage2 endpoint
+
 ### Phase 1: ML-Assisted Screening (Complete)
 
 #### Added
@@ -25,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Manual Review Queue**: `GET /screening/queue/uncertain` - Papers needing manual review
 - **Screening Statistics**: `GET /screening/statistics` - PRISMA-ready statistics
 - **Manual Review Update**: `POST /screening/review` - Update decisions manually
+- **Batch Review**: `POST /screening/review/batch` - Batch update multiple papers
 
 #### Updated
 - **ScreeningResult Schema**: Added fields for confidence_band, screened_by, exclusion_category, notes
