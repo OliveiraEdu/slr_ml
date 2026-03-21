@@ -66,31 +66,44 @@ Configure which databases to use and their input files:
 
 ```yaml
 sources:
+  # Web of Science
   wos:
     enabled: true
     file_path: "inputs/wos.bib"
     format: "bibtex"
 
+  # IEEE Xplore
   ieee:
     enabled: true
     file_path: "inputs/ieee.csv"
     format: "csv"
 
+  # ACM Digital Library
   acm:
     enabled: true
     file_path: "inputs/acm.bib"
     format: "bibtex"
 
+  # Scopus
   scopus:
     enabled: true
     file_path: "inputs/scopus.csv"
     format: "csv"
 
+  # PubMed
+  pubmed:
+    enabled: true
+    file_path: "inputs/pubmed.bib"
+    format: "bibtex"
+
+  # arXiv (live API queries)
   arxiv:
-    enabled: false
+    enabled: true
     max_results: 100
     queries:
       - query: "blockchain provenance scientific data"
+        max_results: 50
+      - query: "maDMP data management plan"
         max_results: 50
 ```
 
@@ -202,18 +215,50 @@ curl -X POST http://localhost:8000/config/load \
 
 #### Step 2: Import Papers
 
-Import from directory:
+Import from all configured sources (recommended):
 ```bash
 curl -X POST http://localhost:8000/papers/import-directory \
   -H "Content-Type: application/json" \
   -d '{"directory": "inputs"}'
 ```
 
-Or import specific file:
+Or import specific files by source:
+
 ```bash
+# Web of Science (BibTeX)
 curl -X POST http://localhost:8000/papers/import \
   -H "Content-Type: application/json" \
   -d '{"source": "wos", "file_path": "inputs/wos.bib", "format": "bibtex"}'
+
+# IEEE Xplore (CSV)
+curl -X POST http://localhost:8000/papers/import \
+  -H "Content-Type: application/json" \
+  -d '{"source": "ieee", "file_path": "inputs/ieee.csv", "format": "csv"}'
+
+# ACM Digital Library (BibTeX)
+curl -X POST http://localhost:8000/papers/import \
+  -H "Content-Type: application/json" \
+  -d '{"source": "acm", "file_path": "inputs/acm.bib", "format": "bibtex"}'
+
+# Scopus (CSV)
+curl -X POST http://localhost:8000/papers/import \
+  -H "Content-Type: application/json" \
+  -d '{"source": "scopus", "file_path": "inputs/scopus.csv", "format": "csv"}'
+
+# PubMed (BibTeX)
+curl -X POST http://localhost:8000/papers/import \
+  -H "Content-Type: application/json" \
+  -d '{"source": "pubmed", "file_path": "inputs/pubmed.bib", "format": "bibtex"}'
+
+# arXiv (Live API query)
+curl -X POST http://localhost:8000/papers/arxiv \
+  -H "Content-Type: application/json" \
+  -d '{"query": "blockchain provenance scientific data", "max_results": 50}'
+
+# From URLs (remote download)
+curl -X POST http://localhost:8000/papers/download-all \
+  -H "Content-Type: application/json" \
+  -d '{"source": "wos", "url": "https://example.com/export.ris"}'
 ```
 
 #### Step 3: Deduplicate
@@ -290,9 +335,26 @@ This workflow is optimized for single-researcher execution while maintaining pub
 # 1. Clear previous data
 curl -X POST http://localhost:8000/papers/clear
 
-# 2. Import from all configured sources
-curl -X POST http://localhost:8000/papers/import -d '{"source": "acm", "file_path": "inputs/acm.bib", "format": "bibtex"}'
-curl -X POST http://localhost:8000/papers/import -d '{"source": "ieee", "file_path": "inputs/ieee.csv", "format": "csv"}'
+# 2. Import from ALL configured sources
+# Web of Science
+curl -X POST http://localhost:8000/papers/import \
+  -d '{"source": "wos", "file_path": "inputs/wos.bib", "format": "bibtex"}'
+
+# IEEE Xplore
+curl -X POST http://localhost:8000/papers/import \
+  -d '{"source": "ieee", "file_path": "inputs/ieee.csv", "format": "csv"}'
+
+# ACM Digital Library
+curl -X POST http://localhost:8000/papers/import \
+  -d '{"source": "acm", "file_path": "inputs/acm.bib", "format": "bibtex"}'
+
+# Scopus
+curl -X POST http://localhost:8000/papers/import \
+  -d '{"source": "scopus", "file_path": "inputs/scopus.csv", "format": "csv"}'
+
+# arXiv (live queries)
+curl -X POST http://localhost:8000/papers/arxiv \
+  -d '{"query": "blockchain provenance scientific data management", "max_results": 100}'
 
 # 3. Deduplicate
 curl -X POST http://localhost:8000/papers/dedupe

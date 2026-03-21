@@ -6,7 +6,7 @@ A configuration-driven systematic literature review engine that automates paper 
 
 ## Features
 
-- **Multi-source import**: BibTeX and CSV files from WoS, IEEE Xplore, ACM, Scopus, and PubMed
+- **Multi-source import**: BibTeX and CSV files from Web of Science, IEEE Xplore, ACM Digital Library, Scopus, PubMed, and arXiv
 - **URL Download**: Download paper exports directly from remote URLs
 - **arXiv integration**: Real-time API queries for preprints
 - **ML-powered screening**: SciBERT zero-shot classification with confidence bands
