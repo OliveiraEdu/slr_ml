@@ -569,8 +569,17 @@ List loaded papers with pagination.
 
 Query parameters:
 - `source` - Filter by source
+- `decision` - Filter by decision (include|exclude|uncertain)
 - `limit` - Number of results (max 1000)
 - `offset` - Offset for pagination
+
+```bash
+# List all included papers
+curl "http://localhost:8000/papers/list?decision=include&limit=500"
+
+# List papers from specific source
+curl "http://localhost:8000/papers/list?source=arxiv&limit=100"
+```
 
 ### Screening
 
@@ -617,6 +626,27 @@ Query parameters:
 
 ### PRISMA & Reporting
 
+**GET /prisma/checklist**
+
+Returns the 27-item PRISMA 2020 checklist with completion status.
+
+**PUT /prisma/checklist/item**
+
+Update a checklist item status.
+
+```bash
+curl -X PUT http://localhost:8000/prisma/checklist/item \
+  -H "Content-Type: application/json" \
+  -d '{
+    "item_number": 1,
+    "status": "reported",
+    "page_reference": "1",
+    "notes": "Title properly identifies as systematic review"
+  }'
+```
+
+Status options: `reported`, `not_applicable`, `not_reported`
+
 **POST /prisma/extract**
 
 Run extraction and quality assessment on included studies.
@@ -625,8 +655,13 @@ Run extraction and quality assessment on included studies.
 
 Generate full PRISMA 2020 report.
 
-Query parameters:
-- `format` - Output format (markdown|json)
+```bash
+# Markdown report
+curl -X POST http://localhost:8000/prisma/report/full
+
+# JSON report
+curl http://localhost:8000/prisma/report?format=json
+```
 
 **GET /prisma/extraction**
 
