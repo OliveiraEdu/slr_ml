@@ -8,10 +8,13 @@ This manual provides detailed instructions for using the PRISMA 2020 Systematic 
 2. [Configuration](#configuration)
 3. [Running the API](#running-the-api)
 4. [Pipeline Workflow](#pipeline-workflow)
-5. [API Endpoints Reference](#api-endpoints-reference)
-6. [Report Generation](#report-generation)
-7. [Markdown to LaTeX Conversion](#markdown-to-latex-conversion)
-8. [Troubleshooting](#troubleshooting)
+5. [Solo PhD Workflow](#solo-phd-workflow)
+6. [CSV Manual Review Workflow](#csv-manual-review-workflow)
+7. [Advanced Features](#advanced-features)
+8. [API Endpoints Reference](#api-endpoints-reference)
+9. [Report Generation](#report-generation)
+10. [Markdown to LaTeX Conversion](#markdown-to-latex-conversion)
+11. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -21,6 +24,7 @@ This manual provides detailed instructions for using the PRISMA 2020 Systematic 
 
 - Python 3.10+
 - pip package manager
+- Docker & Docker Compose (for containerized deployment)
 
 ### Steps
 
@@ -115,6 +119,8 @@ classification:
       - data management
 ```
 
+**For Solo PhD**: Use a lower threshold (e.g., 0.35) to capture more papers, then manually filter.
+
 ### 3. PRISMA Configuration (`config/prisma.yaml`)
 
 Configure PRISMA reporting:
@@ -161,10 +167,17 @@ quality_assessment:
 
 ## Running the API
 
-### Start the API server
+### Docker Deployment (Recommended)
 
 ```bash
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+# Build and start
+make build && make up
+
+# Check health
+make health
+
+# View logs
+make logs
 ```
 
 ### Access the API
@@ -206,9 +219,7 @@ curl -X POST http://localhost:8000/papers/import \
 #### Step 3: Deduplicate
 
 ```bash
-curl -X POST http://localhost:8000/papers/dedupe \
-  -H "Content-Type: application/json" \
-  -d '{}'
+curl -X POST http://localhost:8000/papers/dedupe
 ```
 
 #### Step 4: Run Screening
@@ -216,7 +227,7 @@ curl -X POST http://localhost:8000/papers/dedupe \
 ```bash
 curl -X POST http://localhost:8000/screening/run \
   -H "Content-Type: application/json" \
-  -d '{}'
+  -d '{"threshold": 0.5}'
 ```
 
 #### Step 5: Extract Data & Quality Assessment
@@ -229,17 +240,226 @@ curl -X POST http://localhost:8000/prisma/extract
 
 ```bash
 # Markdown report
-curl http://localhost:8000/prisma/report?format=markdown
+curl -X POST http://localhost:8000/prisma/report/full
 
 # JSON report
 curl http://localhost:8000/prisma/report?format=json
 ```
 
-### Using the Pipeline Script
+---
+
+## Solo PhD Workflow
+
+This workflow is optimized for single-researcher execution while maintaining publication quality.
+
+### Recommended Process
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    SOLO PhD WORKFLOW                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  PHASE 1: AUTOMATED (No Human Required)                          │
+│  ─────────────────────────────────────────────                   │
+│  ✓ Import papers from BibTeX/CSV files                           │
+│  ✓ Automatic deduplication                                       │
+│  ✓ ML screening with lower threshold (0.35)                     │
+│  ✓ DOI metadata enrichment                                       │
+│  ✓ Automatic data extraction                                    │
+│  ✓ Quality assessment (MMAT)                                     │
+│  ✓ PRISMA flow diagram generation                                │
+│                                                                  │
+│  PHASE 2: HUMAN REVIEW (Your Effort)                             │
+│  ─────────────────────────────────                               │
+│  ✓ Review uncertain papers (~10-30% of total)                   │
+│  ✓ Validate top-ranked ML-included papers                        │
+│  ✓ Complete PRISMA 2020 checklist (26 items)                    │
+│                                                                  │
+│  PHASE 3: FINALIZATION                                           │
+│  ────────────────────                                            │
+│  ✓ Generate full PRISMA report                                   │
+│  ✓ Export extraction data for thesis                            │
+│  ✓ Conduct sensitivity analysis                                 │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Step-by-Step Commands
 
 ```bash
-./run_pipeline.sh
+# 1. Clear previous data
+curl -X POST http://localhost:8000/papers/clear
+
+# 2. Import from all configured sources
+curl -X POST http://localhost:8000/papers/import -d '{"source": "acm", "file_path": "inputs/acm.bib", "format": "bibtex"}'
+curl -X POST http://localhost:8000/papers/import -d '{"source": "ieee", "file_path": "inputs/ieee.csv", "format": "csv"}'
+
+# 3. Deduplicate
+curl -X POST http://localhost:8000/papers/dedupe
+
+# 4. Screen with LOWER threshold (captures more, you filter manually)
+curl -X POST http://localhost:8000/screening/run \
+  -H "Content-Type: application/json" \
+  -d '{"threshold": 0.35}'
+
+# 5. Check statistics
+curl http://localhost:8000/screening/statistics
+
+# 6. Extract data and assess quality
+curl -X POST http://localhost:8000/prisma/extract
+
+# 7. Get PRISMA synthesis
+curl http://localhost:8000/prisma/synthesis
+
+# 8. Generate PRISMA report
+curl -X POST http://localhost:8000/prisma/report/full
+
+# 9. Export uncertain papers for manual review (see next section)
 ```
+
+### Time Estimate
+
+| Task | Papers | Time |
+|------|--------|------|
+| Automated ML screening | 479 | ~5 min |
+| Manual review queue | 50-100 | ~3-4 hours |
+| PRISMA checklist completion | 26 items | ~2-3 hours |
+| Quality verification | Included papers | ~1-2 hours |
+
+**Total: ~6-10 hours of focused work**
+
+---
+
+## CSV Manual Review Workflow
+
+### Export Queue to CSV
+
+```bash
+# Download as file attachment (recommended)
+curl -O http://localhost:8000/screening/queue/uncertain/csv
+
+# Or specify limit
+curl -O "http://localhost:8000/screening/queue/uncertain/csv?limit=100"
+```
+
+### CSV Format
+
+```csv
+review_order,paper_id,title,authors,year,doi,journal,source,ml_decision,ml_score,confidence_band,screened_by,manual_decision,review_reason
+1,abc123456789,"Paper Title Here","Author1; Author2",2023,10.1234/example,"Journal Name",acm,uncertain,0.5432,low,ml,,   ← FILL THESE
+2,def987654321,"Another Paper","Smith J; Jones K",2022,10.5678/test,"Conf Name",ieee,uncertain,0.5234,low,ml,,
+```
+
+### Review in Excel/Google Sheets
+
+1. Open `manual_review_queue.csv` in Excel or Google Sheets
+2. Fill `manual_decision` column: `include` or `exclude`
+3. Fill `review_reason` column with brief justification
+4. Save as CSV
+
+### Import Reviewed Decisions
+
+```bash
+# Via API endpoint
+curl -X POST http://localhost:8000/screening/review/import-csv \
+  -H "Content-Type: text/plain" \
+  --data-binary @reviewed_queue.csv
+
+# Via Python script (alternative)
+python3 scripts/export_review_queue.py import reviewed_queue.csv
+```
+
+### Batch Review via API (Alternative to CSV)
+
+```bash
+curl -X POST http://localhost:8000/screening/review/batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reviews": [
+      {"paper_id": "abc123456789", "decision": "include", "reason": "Relevant to blockchain provenance"},
+      {"paper_id": "def987654321", "decision": "exclude", "reason": "Not relevant"},
+      {"paper_id": "ghi456789012", "decision": "include", "reason": "maDMP implementation"}
+    ]
+  }'
+```
+
+---
+
+## Advanced Features
+
+### Dual Screening (For Teams)
+
+For research teams with multiple reviewers:
+
+```bash
+# Add screening result from Reviewer 1
+curl -X POST http://localhost:8000/advanced/dual-screening/add \
+  -H "Content-Type: application/json" \
+  -d '{"paper_id": "abc123", "reviewer_id": "reviewer_1", "decision": "include", "confidence": 0.8}'
+
+# Add screening result from Reviewer 2
+curl -X POST http://localhost:8000/advanced/dual-screening/add \
+  -H "Content-Type: application/json" \
+  -d '{"paper_id": "abc123", "reviewer_id": "reviewer_2", "decision": "include", "confidence": 0.9}'
+
+# Calculate Cohen's Kappa
+curl -X POST http://localhost:8000/advanced/dual-screening/kappa \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reviewer_1_results": {"paper1": "include", "paper2": "exclude", "paper3": "include"},
+    "reviewer_2_results": {"paper1": "include", "paper2": "include", "paper3": "exclude"}
+  }'
+
+# Get conflicts
+curl http://localhost:8000/advanced/dual-screening/conflicts
+```
+
+### Sensitivity Analysis
+
+```bash
+# Threshold sensitivity
+curl http://localhost:8000/advanced/sensitivity/threshold
+
+# Confidence sensitivity
+curl http://localhost:8000/advanced/sensitivity/confidence
+```
+
+### Risk of Bias Assessment
+
+```bash
+# Single paper
+curl http://localhost:8000/advanced/risk-of-bias/abc123?study_type=nrt
+
+# Batch assessment
+curl -X POST http://localhost:8000/advanced/risk-of-bias/batch \
+  -H "Content-Type: application/json" \
+  -d '{"study_type": "nrt"}'
+```
+
+### Full-Text Retrieval
+
+```bash
+# Retrieve single paper PDF
+curl -X POST http://localhost:8000/fulltext/retrieve \
+  -H "Content-Type: application/json" \
+  -d '{"paper_id": "abc123"}'
+
+# Batch retrieval
+curl -X POST http://localhost:8000/fulltext/retrieve/batch \
+  -H "Content-Type: application/json" \
+  -d '{"paper_ids": ["abc123", "def456"], "force": false}'
+
+# Check progress
+curl http://localhost:8000/fulltext/progress
+```
+
+### World-Class Readiness Assessment
+
+```bash
+curl http://localhost:8000/advanced/readiness
+```
+
+Returns assessment of PRISMA 2020 compliance and recommendations.
 
 ---
 
@@ -306,6 +526,24 @@ Request:
 }
 ```
 
+**GET /screening/queue/uncertain**
+
+Get papers requiring manual review.
+
+Query parameters:
+- `limit` - Number of papers (1-500)
+- `sort_by` - Sort method (relevance|composite|citations)
+
+**GET /screening/queue/uncertain/csv**
+
+Download uncertain papers as CSV file attachment for manual review.
+
+**POST /screening/review/import-csv**
+
+Import manually reviewed CSV decisions.
+
+Request: Raw CSV content with `paper_id,manual_decision` columns.
+
 **GET /screening/rank**
 
 Get papers ranked by composite score.
@@ -321,7 +559,7 @@ Query parameters:
 
 Run extraction and quality assessment on included studies.
 
-**GET /prisma/report**
+**GET /prisma/report/full**
 
 Generate full PRISMA 2020 report.
 
@@ -480,6 +718,11 @@ Or use your preferred LaTeX editor (Overleaf, TeX Shop, etc.).
 
 - Run `/prisma/extract` before `/prisma/report`
 - Ensure screening has completed with included papers
+
+#### 5. CSV download saves as JSON
+
+- Use `-O` flag with curl: `curl -O http://.../uncertain/csv`
+- Or redirect output: `curl http://.../uncertain/csv > file.csv`
 
 ### Logs
 

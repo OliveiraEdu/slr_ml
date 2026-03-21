@@ -145,14 +145,23 @@ slr_ml/
 ├── src/
 │   ├── api/              # FastAPI application
 │   │   └── routers/      # API route modules
-│   │       ├── papers.py      # Paper import/export endpoints
-│   │       ├── screening.py    # ML screening workflow
-│   │       ├── prisma.py       # PRISMA reporting
-│   │       ├── enrichment.py   # DOI enrichment
-│   │       ├── config.py       # Configuration management
-│   │       └── converters.py   # Format conversion
+│   │       ├── papers.py          # Paper import/export endpoints
+│   │       ├── screening.py       # ML screening workflow
+│   │       ├── prisma.py          # PRISMA reporting
+│   │       ├── enrichment.py      # DOI enrichment
+│   │       ├── config.py          # Configuration management
+│   │       ├── converters.py      # Format conversion
+│   │       ├── advanced.py        # Dual screening, sensitivity, RoB
+│   │       └── fulltext.py        # Full-text retrieval
 │   ├── ml/               # ML classifiers
 │   ├── pipeline/         # Processing pipelines
+│   │   ├── dual_screening.py      # Dual screening + Cohen's Kappa
+│   │   ├── sensitivity_analysis.py # Threshold sensitivity + bias
+│   │   ├── risk_of_bias.py        # RoB 2.0, ROBINS-T
+│   │   ├── completeness.py        # PRISMA 2020 completeness
+│   │   ├── provenance.py          # Screening decision audit
+│   │   ├── fulltext_retriever.py  # DOI/arXiv PDF retrieval
+│   │   └── extraction.py          # Data extraction
 │   ├── loaders/          # File loaders (BibTeX, CSV)
 │   ├── connectors/       # External APIs (DOI, ArXiv)
 │   ├── converters/      # Document converters (MD to LaTeX)
@@ -161,6 +170,8 @@ slr_ml/
 ├── config/               # YAML configuration files
 ├── inputs/               # Input papers
 ├── outputs/              # Generated reports
+├── scripts/              # Utility scripts
+│   └── export_review_queue.py  # CSV export/import for manual review
 ├── tests/                # Test files
 └── docs/                 # Documentation
 ```

@@ -21,9 +21,13 @@ A configuration-driven systematic literature review engine that automates paper 
 - **PRISMA 2020 compliance**: Automated flow diagram, 27-item checklist, full reports
 - **Data extraction**: 35+ maDMP/blockchain fields for included studies
 - **Quality assessment**: MMAT-based quality scoring
-- **Synthesis**: Platform analysis, research gaps, trend identification
+- **Sensitivity analysis**: Threshold sensitivity and publication bias detection
+- **Risk of bias assessment**: RoB 2.0 and ROBINS-T support
+- **Provenance tracking**: Screening decision audit trail
+- **Full-text retrieval**: DOI and arXiv PDF fetching
+- **CSV import/export**: Manual review workflow with Excel compatibility
+- **Dual screening support**: Cohen's Kappa calculation for inter-rater reliability
 - **DOI enrichment**: CrossRef and DataCite API integration
-- **CSV export**: Export extraction and quality data for thesis appendix
 - **Configuration-driven**: All settings via YAML files - no hardcoded values
 - **REST API**: FastAPI with OpenAPI/Swagger documentation
 
@@ -43,6 +47,23 @@ make screen
 # 4. View results
 make stats
 make prisma-report
+```
+
+### Solo PhD Workflow (Recommended)
+
+```bash
+# Run with lower threshold for broader capture
+curl -X POST http://localhost:8000/screening/run \
+  -H "Content-Type: application/json" \
+  -d '{"threshold": 0.35}'
+
+# Export uncertain papers for manual review
+curl -O http://localhost:8000/screening/queue/uncertain/csv
+
+# After reviewing in Excel, import decisions
+curl -X POST http://localhost:8000/screening/review/import-csv \
+  -H "Content-Type: text/plain" \
+  --data-binary @reviewed_queue.csv
 ```
 
 ## Docker Deployment
@@ -107,7 +128,7 @@ make sources            # List configured sources
 make download-all       # Download all sources
 ```
 
-## API Endpoints (~40 total)
+## API Endpoints (~50 total)
 
 ### Papers
 | Endpoint | Method | Description |
@@ -121,17 +142,55 @@ make download-all       # Download all sources
 | `/papers/flagged` | GET | Papers without DOI |
 | `/papers/retrievable` | GET | Papers with DOI |
 | `/papers/{id}/fulltext` | GET/POST | Full-text management |
+| `/papers/enrich` | POST | Enrich with DOI metadata |
 
 ### Screening
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/screening/run` | POST | Run ML screening |
 | `/screening/queue/uncertain` | GET | Manual review queue |
+| `/screening/queue/uncertain/csv` | GET | **Download CSV for manual review** |
+| `/screening/queue/all/csv` | GET | Export all papers to CSV |
 | `/screening/review` | POST | Update single decision |
-| `/screening/review/batch` | POST | Batch update |
+| `/screening/review/batch` | POST | Batch update decisions |
+| `/screening/review/import-csv` | POST | **Import reviewed CSV** |
 | `/screening/statistics` | GET | PRISMA statistics |
 | `/screening/progression` | GET | Stage progression |
 | `/screening/stage2` | POST | Run Stage 2 screening |
+| `/screening/rank` | GET | Rank papers by composite score |
+
+### Advanced Screening
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/advanced/dual-screening/add` | POST | Add dual screening result |
+| `/advanced/dual-screening/kappa` | POST | Calculate Cohen's Kappa |
+| `/advanced/dual-screening/conflicts` | GET | Get reviewer conflicts |
+| `/advanced/sensitivity/threshold` | GET | Threshold sensitivity analysis |
+| `/advanced/sensitivity/confidence` | GET | Confidence sensitivity analysis |
+| `/advanced/risk-of-bias/{id}` | GET | Single paper RoB assessment |
+| `/advanced/risk-of-bias/batch` | POST | Batch RoB assessment |
+| `/advanced/completeness` | GET | Workflow completeness tracking |
+| `/advanced/readiness` | GET | World-class readiness score |
+
+### Full-Text
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/fulltext/retrieve` | POST | Retrieve single paper PDF |
+| `/fulltext/retrieve/batch` | POST | Batch PDF retrieval |
+| `/fulltext/progress` | GET | Retrieval progress status |
+| `/fulltext/{id}/extract-text` | GET | Extract text from PDF |
+| `/fulltext/{id}/status` | GET | Paper FT status |
+
+### Enhanced Screening (Option B)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/enhanced/filter/keywords` | POST | Keyword pre-filtering |
+| `/enhanced/active-learning` | POST | Sample selection for review |
+| `/enhanced/fine-tune` | POST | Fine-tune SciBERT |
+| `/enhanced/snowballing` | POST | Reference chasing |
+| `/enhanced/certainty-screening` | POST | Auto decisions |
+| `/enhanced/rank/citations` | POST | Citation ranking |
+| `/enhanced/screening/full` | POST | Full enhanced pipeline |
 
 ### PRISMA
 | Endpoint | Method | Description |
@@ -149,22 +208,16 @@ make download-all       # Download all sources
 | `/prisma/quality/assess` | POST | Run quality assessment |
 | `/prisma/quality/export` | GET | Export quality as CSV |
 
-### Enhanced Screening (Option B)
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/enhanced/filter/keywords` | POST | Keyword pre-filtering |
-| `/enhanced/active-learning` | POST | Sample selection for review |
-| `/enhanced/fine-tune` | POST | Fine-tune SciBERT |
-| `/enhanced/snowballing` | POST | Reference chasing |
-| `/enhanced/certainty-screening` | POST | Auto decisions |
-| `/enhanced/rank/citations` | POST | Citation ranking |
-| `/enhanced/screening/full` | POST | Full enhanced pipeline |
-
 ### Configuration
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/config/status` | GET | Config status |
 | `/config/classification` | GET/PUT | Classification config |
+
+### Converters
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/convert/markdown-to-latex` | POST | MD to LaTeX conversion |
 
 ## Configuration
 
@@ -177,6 +230,69 @@ All settings via YAML files in `config/`:
 | `classification.yaml` | Keywords, thresholds, confidence bands |
 | `prisma.yaml` | PRISMA settings, exclusion reasons |
 | `extraction.yaml` | Extraction keywords, MMAT criteria |
+
+## Solo PhD Workflow
+
+### Recommended Process
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    SOLO PhD WORKFLOW                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. AUTOMATED (No Human Required)                                 │
+│     ✓ Import papers (BibTeX/CSV)                                 │
+│     ✓ Deduplication                                              │
+│     ✓ ML screening (threshold=0.35)                             │
+│     ✓ DOI enrichment                                             │
+│     ✓ Data extraction                                            │
+│     ✓ Quality assessment                                         │
+│                                                                  │
+│  2. HUMAN REVIEW (Your Effort)                                   │
+│     ✓ Review uncertain papers (export to CSV)                    │
+│     ✓ Validate top-ranked included papers                        │
+│     ✓ Complete PRISMA checklist (26 items)                       │
+│                                                                  │
+│  3. DOCUMENTATION                                                │
+│     ✓ Generate PRISMA report                                     │
+│     ✓ Export extraction data                                     │
+│     ✓ Final synthesis                                            │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Step-by-Step
+
+```bash
+# 1. Clear and import
+curl -X POST http://localhost:8000/papers/clear
+curl -X POST http://localhost:8000/papers/import -d '{"source": "acm", ...}'
+curl -X POST http://localhost:8000/papers/import -d '{"source": "ieee", ...}'
+
+# 2. Deduplicate
+curl -X POST http://localhost:8000/papers/dedupe
+
+# 3. Screen with lower threshold (captures more, you filter)
+curl -X POST http://localhost:8000/screening/run \
+  -H "Content-Type: application/json" \
+  -d '{"threshold": 0.35}'
+
+# 4. Get statistics
+curl http://localhost:8000/screening/statistics
+
+# 5. Export uncertain queue to CSV
+curl -O http://localhost:8000/screening/queue/uncertain/csv
+
+# 6. Review in Excel - fill 'manual_decision' and 'review_reason' columns
+
+# 7. Import reviewed decisions
+curl -X POST http://localhost:8000/screening/review/import-csv \
+  -H "Content-Type: text/plain" \
+  --data-binary @reviewed_queue.csv
+
+# 8. Generate PRISMA report
+curl -X POST http://localhost:8000/prisma/report/full
+```
 
 ## Architecture
 
