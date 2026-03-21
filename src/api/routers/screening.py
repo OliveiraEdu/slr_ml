@@ -403,6 +403,133 @@ async def get_screening_progression():
     }
 
 
+@router.get("/queue/uncertain/csv")
+async def export_uncertain_queue_csv(
+    limit: int = Query(500, ge=1, le=500),
+    sort_by: str = Query("relevance", regex="^(relevance|composite|citations)$"),
+):
+    """Export uncertain papers queue to CSV for manual review."""
+    app_state = get_app_state()
+    results = app_state["results"]
+    papers = app_state["papers"]
+    
+    uncertain_results = [
+        r for r in results 
+        if r.decision == ScreeningDecision.UNCERTAIN 
+        or r.confidence_band == ConfidenceBand.LOW
+    ]
+    
+    paper_map = {p.id: p for p in papers}
+    
+    queue = []
+    for r in uncertain_results:
+        p = paper_map.get(r.paper_id)
+        if p:
+            queue.append({
+                "paper": p,
+                "result": r,
+            })
+    
+    if sort_by == "relevance":
+        queue.sort(key=lambda x: x["result"].relevance_score, reverse=True)
+    elif sort_by == "citations":
+        queue.sort(key=lambda x: x["result"].citation_score, reverse=True)
+    else:
+        queue.sort(key=lambda x: x["result"].composite_score, reverse=True)
+    
+    csv_lines = []
+    csv_lines.append("review_order,paper_id,title,authors,year,doi,journal,source,ml_decision,ml_score,confidence_band,screened_by,manual_decision,review_notes")
+    
+    for idx, item in enumerate(queue[:limit], 1):
+        p = item["paper"]
+        r = item["result"]
+        
+        title = (p.title or "").replace('"', '""').replace('\n', ' ')
+        authors = "; ".join(p.authors or []).replace('"', '""')
+        journal = (p.journal or "").replace('"', '""')
+        notes = ""
+        
+        csv_lines.append(
+            f'{idx},'
+            f'{p.id},'
+            f'"{title}",'
+            f'"{authors}",'
+            f'{p.year or ""},'
+            f'{p.doi or ""},'
+            f'"{journal}",'
+            f'{p.source.value if p.source else ""},'
+            f'{r.decision.value},'
+            f'{r.relevance_score:.4f},'
+            f'{r.confidence_band.value},'
+            f'{r.screened_by.value},'
+            f','
+            f'"{notes}"'
+        )
+    
+    csv_content = "\n".join(csv_lines)
+    
+    return {
+        "total": len(queue),
+        "exported": min(limit, len(queue)),
+        "csv": csv_content,
+    }
+
+
+@router.get("/queue/all/csv")
+async def export_all_papers_csv(
+    decision: Optional[str] = Query(None, description="Filter by decision: include, exclude, uncertain"),
+):
+    """Export all screened papers to CSV."""
+    app_state = get_app_state()
+    results = app_state["results"]
+    papers = app_state["papers"]
+    
+    if decision:
+        results = [r for r in results if r.decision.value == decision]
+    
+    paper_map = {p.id: p for p in papers}
+    
+    csv_lines = []
+    csv_lines.append("paper_id,title,authors,year,doi,journal,source,abstract_length,decision,relevance_score,composite_score,confidence_band,screened_by,reason,reviewed_at")
+    
+    for r in results:
+        p = paper_map.get(r.paper_id)
+        if not p:
+            continue
+        
+        title = (p.title or "").replace('"', '""').replace('\n', ' ')
+        authors = "; ".join(p.authors or []).replace('"', '""')
+        journal = (p.journal or "").replace('"', '""')
+        abstract = (p.abstract or "")[:200].replace('"', '""')
+        reason = (r.reason or "").replace('"', '""')
+        reviewed = r.reviewed_at or ""
+        
+        csv_lines.append(
+            f'{p.id},'
+            f'"{title}",'
+            f'"{authors}",'
+            f'{p.year or ""},'
+            f'{p.doi or ""},'
+            f'"{journal}",'
+            f'{p.source.value if p.source else ""},'
+            f'{len(p.abstract or "")},'
+            f'{r.decision.value},'
+            f'{r.relevance_score:.4f},'
+            f'{r.composite_score:.4f},'
+            f'{r.confidence_band.value},'
+            f'{r.screened_by.value},'
+            f'"{reason}",'
+            f'{reviewed}'
+        )
+    
+    csv_content = "\n".join(csv_lines)
+    
+    return {
+        "total": len(results),
+        "csv": csv_content,
+    }
+
+
 @router.get("/queue/stage2")
 async def get_stage2_queue(
     limit: int = Query(100, ge=1, le=500),
@@ -455,6 +582,69 @@ async def get_stage2_queue(
         "without_fulltext": sum(1 for p in eligible_papers if not p["has_fulltext"]),
         "flagged": sum(1 for p in eligible_papers if p["flagged"]),
         "papers": eligible_papers[:limit],
+    }
+
+
+@router.post("/review/import-csv")
+async def import_review_csv(
+    decisions: str = Body(..., description="CSV content with paper_id,manual_decision columns"),
+):
+    """Import manual review decisions from CSV format.
+    
+    CSV format expected:
+    paper_id,manual_decision,review_notes
+    abc123,include,Relevant to research question
+    def456,exclude,Not relevant
+    """
+    import csv
+    from io import StringIO
+    
+    app_state = get_app_state()
+    results = app_state["results"]
+    
+    reader = csv.DictReader(StringIO(decisions))
+    
+    result_map = {r.paper_id: i for i, r in enumerate(results)}
+    
+    updated = []
+    not_found = []
+    invalid_decision = []
+    
+    for row in reader:
+        paper_id = row.get("paper_id", "").strip()
+        manual_decision = row.get("manual_decision", "").strip().lower()
+        review_notes = row.get("review_notes", row.get("notes", "")).strip()
+        
+        if not paper_id:
+            continue
+        
+        if paper_id not in result_map:
+            not_found.append(paper_id)
+            continue
+        
+        if manual_decision not in ["include", "exclude"]:
+            invalid_decision.append({"paper_id": paper_id, "decision": manual_decision})
+            continue
+        
+        idx = result_map[paper_id]
+        
+        decision = ScreeningDecision.INCLUDE if manual_decision == "include" else ScreeningDecision.EXCLUDE
+        results[idx].decision = decision
+        results[idx].screened_by = ScreeningMethod.MANUAL
+        results[idx].reason = review_notes
+        results[idx].notes = review_notes
+        results[idx].reviewed_at = str(datetime.now().isoformat())
+        
+        updated.append(paper_id)
+    
+    return {
+        "status": "import_complete",
+        "updated_count": len(updated),
+        "not_found_count": len(not_found),
+        "invalid_decision_count": len(invalid_decision),
+        "updated": updated,
+        "not_found": not_found,
+        "invalid_decisions": invalid_decision[:10],
     }
 
 
