@@ -409,6 +409,9 @@ async def export_uncertain_queue_csv(
     sort_by: str = Query("relevance", regex="^(relevance|composite|citations)$"),
 ):
     """Export uncertain papers queue to CSV for manual review."""
+    from fastapi.responses import StreamingResponse
+    from io import StringIO
+    
     app_state = get_app_state()
     results = app_state["results"]
     papers = app_state["papers"]
@@ -468,11 +471,11 @@ async def export_uncertain_queue_csv(
     
     csv_content = "\n".join(csv_lines)
     
-    return {
-        "total": len(queue),
-        "exported": min(limit, len(queue)),
-        "csv": csv_content,
-    }
+    return StreamingResponse(
+        iter([csv_content]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=manual_review_queue.csv"}
+    )
 
 
 @router.get("/queue/all/csv")
