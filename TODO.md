@@ -1,6 +1,17 @@
 # TODO - Next Session
 
-## Priority 1: Completed ✅
+## Priority 1: Threshold & Workflow Fixes (Critical for Recall)
+
+- [x] Lower default threshold from 0.6 to 0.35 for initial screening
+  - File: `config/classification.yaml:167`
+  - Change: `include: 0.35` (maximize recall for solo PhD)
+  - Rationale: Better to over-capture and filter manually than miss relevant papers
+
+- [x] Update README with threshold guidance
+  - Add section explaining threshold selection by workflow type
+  - Solo PhD: 0.35 | Team review: 0.5 | Conservative: 0.6
+
+- [x] Test and validate lower threshold doesn't overwhelm manual review queue
 
 - [x] CSV export/import for manual review workflow
   - Endpoint: `/screening/queue/uncertain/csv` (downloadable)
@@ -34,6 +45,67 @@
 
 - [x] Provenance tracking
   - Pipeline: `src/pipeline/provenance.py`
+
+## Priority 2: Data Sources (Critical for Comprehensiveness)
+
+- [x] Add gray literature sources
+  - Add OpenGrey (opensgrey.org) to data_sources.yaml
+  - Add EThOS (British Library) for theses
+  - Add ClinicalTrials.gov for ongoing trials
+  - Rationale: Gray literature can represent 20%+ of relevant studies
+
+- [x] Add PROSPERO registration check
+  - Add endpoint to query PROSPERO for protocol registration
+  - Helps identify ongoing studies and reduce publication bias
+
+- [x] Verify all configured sources (WoS, IEEE, ACM, Scopus, PubMed, arXiv) are accessible
+
+## Priority 3: Advanced Search (Important for Precision)
+
+- [x] Implement MeSH term matching for biomedical queries
+  - Add MeSH lookup for PubMed-sourced papers
+  - Enable ontology-based expansion
+
+- [x] Add citation tracking beyond Scopus (CrossRef, Semantic Scholar)
+  - Update src/ml/active_learning.py citation logic
+  - Add Semantic Scholar API integration
+
+- [x] Increase snowballing depth from 2 to 3-4
+  - File: `config/classification.yaml:205`
+  - Rationale: Deep citation chaining captures more related work
+
+## Priority 4: Quality Assessment (Important for Rigor)
+
+- [x] Add GRADE assessment support
+  - Create src/pipeline/grade_assessment.py
+  - Add endpoint `/prisma/quality/grade`
+  - Standard for evidence quality in systematic reviews
+
+- [x] Consider ROBIS instead of RoB 2.0/ROBINS-T
+  - ROBIS is specifically designed for systematic reviews
+  - More appropriate than domain-specific RoB tools
+
+## Priority 5: PRISMA Enhancements (Documentation)
+
+- [ ] Add PRISMA-P (protocol) generation
+  - Endpoint to generate protocol for prospective registration
+  - Required for publication in many journals
+
+- [ ] Add flow diagram auto-generation as image
+  - Current endpoint returns JSON data
+  - Add image export (SVG/PNG) for publications
+
+## Priority 6: Future Enhancements (Nice to Have)
+
+- [ ] Implement WSS@95% stopping criterion for active learning
+  - Work Saved over Sampling at 95% recall
+  - Reduces manual review effort
+
+- [ ] Add conflict of interest detection
+  - Scan for funding sources and conflicts
+
+- [ ] Add JBI checklist support (in addition to existing MMAT)
+  - More comprehensive quality assessment
 
 ## Priority 2: Manual Review Workflow
 

@@ -9,9 +9,9 @@ class ScreeningPipeline:
 
     def __init__(
         self,
-        include_threshold: float = 0.6,
-        exclude_threshold: float = 0.3,
-        uncertain_threshold: float = 0.3,
+        include_threshold: float = 0.35,
+        exclude_threshold: float = 0.2,
+        uncertain_threshold: float = 0.35,
         confidence_gap: float = 0.15,
     ):
         self.include_threshold = include_threshold

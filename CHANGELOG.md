@@ -5,7 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] - 2026-03-20
+## [Unreleased]
+
+### World-Class SLR Enhancements
+
+#### P1: Threshold & Workflow
+- Lowered default threshold from 0.6 to 0.35 for better recall
+- Updated confidence band calculation to use dynamic threshold
+- Added threshold selection guide to README (Solo PhD: 0.35, Team: 0.5, Conservative: 0.6)
+
+#### P2: Data Sources & Gray Literature
+- Added gray literature sources to `config/data_sources.yaml`:
+  - OpenGrey (European gray literature)
+  - EThOS (British Library theses)
+  - ClinicalTrials.gov (ongoing trials)
+  - PROSPERO (registered review protocols)
+- Added PROSPERO connector (`src/connectors/prospero_connector.py`)
+- Added PROSPERO API endpoints (`/prospero/search`, `/prospero/check-papers`, `/prospero/status/{paper_id}`)
+- Verified API accessibility (arXiv, CrossRef working)
+
+#### P3: Advanced Search
+- Added MeSH connector (`src/connectors/mesh_connector.py`)
+- Added MeSH endpoints (`/mesh/match`, `/mesh/expand`, `/mesh/search/{keyword}`, `/mesh/paper/{paper_id}`)
+- Added Semantic Scholar connector (`src/connectors/semantic_scholar_connector.py`)
+  - Citation tracking, influential citations, open access PDF
+- Added Semantic Scholar endpoints (`/citations/enrich-semantic`, `/citations/network/{paper_id}`, `/citations/rank-influence`, `/citations/pivotal`)
+- Increased snowballing depth from 2 to 4
+
+#### P4: Quality Assessment
+- Added GRADE assessment framework (`src/pipeline/grade_assessment.py`)
+- Added GRADE endpoints (`/grade/assess`, `/grade/batch`, `/grade/summary`, `/grade/recommendation`, `/grade/levels`)
+  - Risk of bias, imprecision, indirectness, inconsistency, publication bias domains
+  - Evidence level calculation (HIGH/MODERATE/LOW/VERY_LOW)
+  - Recommendation strength (Strong/Weak)
+- Added ROBIS assessment to existing risk_of_bias module
+- Added ROBIS endpoints (`/advanced/robis/{review_id}`, `/advanced/robis/batch`)
+
+### Build Status
+- `pytest` ✅
+- `ruff check` ✅
+- `ruff format` ✅
 
 > **Note**: API version is still 0.5.0 - update after testing
 

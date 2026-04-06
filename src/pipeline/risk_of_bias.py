@@ -1,4 +1,10 @@
-"""Risk of bias assessment tools for SLR quality control."""
+"""Risk of bias assessment tools for SLR quality control.
+
+Supports:
+- RoB 2.0 (Risk of Bias 2) for randomized controlled trials
+- ROBINS-T (Risk Of Bias In Non-randomized Studies of Interventions) for observational studies
+- ROBIS (Risk Of Bias In Systematic Reviews) for systematic review quality assessment
+"""
 from dataclasses import dataclass
 from typing import Optional
 from enum import Enum
@@ -269,3 +275,193 @@ class RiskOfBiasAssessor:
             return 0.3
         
         return (high_count * 1.0 + medium_count * 0.5 + low_count * 0.0) / total
+
+
+class ROBISLevel(str, Enum):
+    LOW = "low"
+    CONCERNS = "concerns"
+    HIGH = "high"
+
+
+@dataclass
+class ROBISAssessment:
+    """ROBIS assessment result for systematic review quality."""
+    review_id: str
+    phase1_eligibility: ROBISLevel
+    phase2_identify_concerns: ROBISLevel
+    phase3_judgment: ROBISLevel
+    overall_robis: ROBISLevel
+    domains: dict
+    concerns: list[str]
+    recommendations: list[str]
+    
+    def to_dict(self) -> dict:
+        return {
+            "review_id": self.review_id,
+            "phase1_eligibility": self.phase1_eligibility.value,
+            "phase2_identify_concerns": self.phase2_identify_concerns.value,
+            "phase3_judgment": self.phase3_judgment.value,
+            "overall_robis": self.overall_robis.value,
+            "domains": self.domains,
+            "concerns": self.concerns,
+            "recommendations": self.recommendations,
+        }
+
+
+class ROBISAssessor:
+    """Assess systematic review quality using ROBIS tool.
+    
+    ROBIS is specifically designed for systematic reviews and is more 
+    appropriate than RoB 2.0 or ROBINS-T for assessing review quality.
+    
+    Phase 1: Assess eligibility of the review for inclusion
+    Phase 2: Identify concerns across domains
+    Phase 3: Make overall judgment
+    """
+    
+    ROBIS_DOMAINS = [
+        "study_eligibility_criteria",
+        "identification_and_selection",
+        "data_collection_and_appraisal",
+        "synthesis_and_findings",
+    ]
+    
+    def assess_review(self, review: dict) -> ROBISAssessment:
+        """Assess a systematic review using ROBIS."""
+        text = f"{review.get('title', '')} {review.get('abstract', '')}".lower()
+        
+        phase1 = self._assess_phase1(text)
+        phase2 = self._assess_phase2(text)
+        phase3 = self._assess_phase3(text, phase1, phase2)
+        
+        overall = phase3
+        
+        return ROBISAssessment(
+            review_id=review.get("id", ""),
+            phase1_eligibility=phase1,
+            phase2_identify_concerns=phase2,
+            phase3_judgment=phase3,
+            overall_robis=overall,
+            domains=self._get_domain_details(text),
+            concerns=self._get_concerns(text),
+            recommendations=self._get_recommendations(overall),
+        )
+    
+    def _assess_phase1(self, text: str) -> ROBISLevel:
+        """Phase 1: Review eligibility criteria."""
+        eligibility_indicators = {
+            "low": ["prisma", "search strategy", "inclusion criteria", "exclusion criteria"],
+            "concerns": ["unclear", "limited"],
+            "high": ["no criteria", "not specified"],
+        }
+        
+        score = self._score_indicators(text, eligibility_indicators)
+        
+        if score >= 0.7:
+            return ROBISLevel.LOW
+        elif score >= 0.4:
+            return ROBISLevel.CONCERNS
+        else:
+            return ROBISLevel.HIGH
+    
+    def _assess_phase2(self, text: str) -> ROBISLevel:
+        """Phase 2: Identification and selection of studies."""
+        selection_indicators = {
+            "low": ["databases searched", "search terms", "two reviewers", "prisma flow"],
+            "concerns": ["single reviewer", "limited databases"],
+            "high": ["no search", "not reported"],
+        }
+        
+        score = self._score_indicators(text, selection_indicators)
+        
+        if score >= 0.7:
+            return ROBISLevel.LOW
+        elif score >= 0.4:
+            return ROBISLevel.CONCERNS
+        else:
+            return ROBISLevel.HIGH
+    
+    def _assess_phase3(self, text: str, phase1: ROBISLevel, phase2: ROBISLevel) -> ROBISLevel:
+        """Phase 3: Synthesis and findings."""
+        synthesis_indicators = {
+            "low": ["meta-analysis", "heterogeneity", "quality assessment", "tables"],
+            "concerns": ["narrative", "limited synthesis"],
+            "high": ["no synthesis", "inappropriate"],
+        }
+        
+        score = self._score_indicators(text, synthesis_indicators)
+        
+        if score >= 0.7:
+            return ROBISLevel.LOW
+        elif score >= 0.4:
+            return ROBISLevel.CONCERNS
+        else:
+            return ROBISLevel.HIGH
+    
+    def _score_indicators(self, text: str, indicators: dict) -> float:
+        """Score text against indicator keywords."""
+        low_count = sum(1 for kw in indicators["low"] if kw in text)
+        concerns_count = sum(1 for kw in indicators["concerns"] if kw in text)
+        high_count = sum(1 for kw in indicators["high"] if kw in text)
+        
+        total = low_count + concerns_count + high_count
+        if total == 0:
+            return 0.3
+        
+        return (low_count * 1.0 + concerns_count * 0.5 + high_count * 0.0) / total
+    
+    def _get_domain_details(self, text: str) -> dict:
+        """Get detailed assessment per domain."""
+        return {
+            "domain1_eligibility": {
+                "description": "Were eligibility criteria appropriate?",
+                "signal": "low" if "inclusion criteria" in text else "unclear",
+            },
+            "domain2_identification": {
+                "description": "Was search comprehensive?",
+                "signal": "low" if "database" in text and "search" in text else "unclear",
+            },
+            "domain3_appraisal": {
+                "description": "Was quality assessed?",
+                "signal": "low" if "quality" in text or "risk of bias" in text else "unclear",
+            },
+            "domain4_synthesis": {
+                "description": "Was synthesis appropriate?",
+                "signal": "low" if "meta" in text or "forest" in text else "unclear",
+            },
+        }
+    
+    def _get_concerns(self, text: str) -> list[str]:
+        """Identify specific concerns."""
+        concerns = []
+        
+        if "single reviewer" in text:
+            concerns.append("Single reviewer may introduce selection bias")
+        if "limited database" in text:
+            concerns.append("Limited database coverage may miss studies")
+        if "no quality" in text:
+            concerns.append("Quality assessment not performed")
+        if "narrative" in text and "meta" not in text:
+            concerns.append("Narrative synthesis without meta-analysis")
+        
+        return concerns
+    
+    def _get_recommendations(self, overall: ROBISLevel) -> list[str]:
+        """Get recommendations based on ROBIS assessment."""
+        if overall == ROBISLevel.LOW:
+            return [
+                "Review is low risk of bias",
+                "Consider including in evidence synthesis",
+            ]
+        elif overall == ROBISLevel.CONCERNS:
+            return [
+                "Review has some concerns",
+                "Review carefully and note limitations",
+                "Consider sensitivity analysis",
+            ]
+        else:
+            return [
+                "Review has high risk of bias",
+                "Exclude from main analysis",
+                "Use only in sensitivity analysis",
+            ]

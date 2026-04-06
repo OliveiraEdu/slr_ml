@@ -7,7 +7,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routers import papers, screening, prisma, enrichment, config, converters, enhanced_screening, advanced, fulltext
+from src.api.routers import papers, screening, prisma, enrichment, config, converters, enhanced_screening, advanced, fulltext, prospero, mesh, semantic_scholar, grade
 
 logging.basicConfig(
     level=logging.INFO,
@@ -38,6 +38,10 @@ app.include_router(converters.router)
 app.include_router(enhanced_screening.router)
 app.include_router(advanced.router)
 app.include_router(fulltext.router)
+app.include_router(prospero.router)
+app.include_router(mesh.router)
+app.include_router(semantic_scholar.router)
+app.include_router(grade.router)
 
 app_state = {
     "papers": [],

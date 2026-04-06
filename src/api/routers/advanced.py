@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from src.pipeline.dual_screening import DualScreeningManager, InterRaterReliability
 from src.pipeline.sensitivity_analysis import SensitivityAnalyzer, PublicationBiasAnalyzer
 from src.pipeline.completeness import WorkflowCompleteness, PRISMACompletenessChecker
-from src.pipeline.risk_of_bias import RiskOfBiasAssessor
+from src.pipeline.risk_of_bias import RiskOfBiasAssessor, ROBISAssessor
 
 router = APIRouter(prefix="/advanced", tags=["advanced"])
 
@@ -217,3 +217,72 @@ async def get_world_class_readiness():
     )
     
     return completeness.get_world_class_readiness()
+
+
+@router.get("/robis/{review_id}")
+async def assess_robis(
+    review_id: str,
+):
+    """Assess systematic review quality using ROBIS tool."""
+    app_state = get_app_state()
+    papers = app_state.get("papers", [])
+    
+    review = next((p for p in papers if p.id == review_id), None)
+    
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+    
+    assessor = ROBISAssessor()
+    
+    review_dict = {
+        "id": review_id,
+        "title": review.title,
+        "abstract": review.abstract,
+    }
+    
+    assessment = assessor.assess_review(review_dict)
+    
+    return assessment.to_dict()
+
+
+@router.post("/robis/batch")
+async def batch_robis_assessment(
+    review_ids: list[str],
+):
+    """Perform ROBIS assessment on multiple systematic reviews."""
+    app_state = get_app_state()
+    papers = app_state.get("papers", [])
+    
+    paper_map = {p.id: p for p in papers}
+    assessor = ROBISAssessor()
+    
+    results = []
+    for review_id in review_ids:
+        review = paper_map.get(review_id)
+        if not review:
+            results.append({
+                "review_id": review_id,
+                "error": "Not found",
+            })
+            continue
+        
+        review_dict = {
+            "id": review_id,
+            "title": review.title,
+            "abstract": review.abstract,
+        }
+        
+        assessment = assessor.assess_review(review_dict)
+        results.append(assessment.to_dict())
+    
+    low_risk = sum(1 for r in results if r.get("overall_robis") == "low")
+    concerns = sum(1 for r in results if r.get("overall_robis") == "concerns")
+    high_risk = sum(1 for r in results if r.get("overall_robis") == "high")
+    
+    return {
+        "total_reviews": len(results),
+        "low_risk": low_risk,
+        "concerns": concerns,
+        "high_risk": high_risk,
+        "results": results,
+    }

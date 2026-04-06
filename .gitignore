@@ -215,3 +215,4 @@ models/
 # Data directories
 inputs/
 #outputs/
+outputs/prisma/*.md

@@ -231,6 +231,31 @@ All settings via YAML files in `config/`:
 | `prisma.yaml` | PRISMA settings, exclusion reasons |
 | `extraction.yaml` | Extraction keywords, MMAT criteria |
 
+## Threshold Selection Guide
+
+The classification threshold controls the sensitivity of the ML screening:
+
+| Threshold | Use Case | Recall | Precision | Manual Review |
+|-----------|----------|--------|-----------|---------------|
+| **0.35** | Solo PhD, comprehensive capture | High | Lower | More papers |
+| **0.50** | Team review, balanced | Medium | Medium | Moderate |
+| **0.60** | Conservative, high confidence | Lower | High | Fewer papers |
+
+### Confidence Bands
+
+With threshold 0.35, confidence bands are:
+
+- **HIGH**: score ≥ 0.70 or ≤ 0.10 (confident decisions)
+- **MEDIUM**: score ≥ 0.55 or ≤ 0.25 (reasonably confident)
+- **LOW**: score 0.25-0.45 (manual review recommended)
+
+### Recommended Workflow
+
+1. **Initial screening**: Use `threshold=0.35` to maximize recall
+2. **Export uncertain**: Get papers in LOW confidence band for manual review
+3. **Refine threshold**: Run sensitivity analysis to find optimal threshold
+4. **Final screening**: Use optimized threshold for final decisions
+
 ## Solo PhD Workflow
 
 ### Recommended Process

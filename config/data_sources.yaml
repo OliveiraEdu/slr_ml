@@ -72,6 +72,38 @@ sources:
     use_api: true
     description: "ArXiv preprints via API"
 
+  # Gray Literature: OpenGrey
+  opengrey:
+    enabled: true
+    base_url: "https://www.opengrey.info"
+    api_endpoint: "https://api.opengrey.org/v1"
+    format: "bibtex"
+    description: "OpenGrey - European gray literature"
+
+  # Gray Literature: EThOS (British Library)
+  ethosp:
+    enabled: true
+    base_url: "https://ethos.bl.uk"
+    api_endpoint: "https://ethos.bl.uk/API/v1"
+    format: "bibtex"
+    description: "EThOS - British Library theses"
+
+  # Gray Literature: ClinicalTrials.gov
+  clinicaltrials:
+    enabled: true
+    base_url: "https://clinicaltrials.gov"
+    api_endpoint: "https://clinicaltrials.gov/api/v2"
+    format: "xml"
+    description: "ClinicalTrials.gov - ongoing trials"
+
+  # Gray Literature: PROSPERO
+  prospero:
+    enabled: true
+    base_url: "https://www.crd.york.ac.uk/PROSPERO"
+    api_endpoint: "https://www.crd.york.ac.uk/PROSPERO/api/v1"
+    format: "xml"
+    description: "PROSPERO - registered review protocols"
+
 # Download settings
 download:
   output_dir: "inputs"

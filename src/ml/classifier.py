@@ -112,23 +112,28 @@ class SciBERTClassifier:
             return "cpu"
         return self.device
 
-    def _calculate_confidence_band(self, score: float, threshold: float = 0.5) -> tuple[ConfidenceBand, float]:
+    def _calculate_confidence_band(self, score: float, threshold: float = 0.35) -> tuple[ConfidenceBand, float]:
         """Calculate confidence band based on score distance from threshold.
         
         Confidence is measured as how far the score is from the decision boundary.
-        - HIGH: score >= 0.75 or score <= 0.25 (far from threshold)
-        - MEDIUM: score >= 0.55 or score <= 0.45 (near threshold but not critical)
-        - LOW: score between 0.45 and 0.55 (uncertain zone)
+        Uses configurable bands based on threshold (default: 0.35 for solo PhD).
+        - HIGH: score >= threshold + 0.35 or score <= threshold - 0.35
+        - MEDIUM: score >= threshold + 0.15 or score <= threshold - 0.15
+        - LOW: score within ±0.15 of threshold (uncertain zone - manual review)
         
         Returns:
             Tuple of (ConfidenceBand, confidence_score)
         """
         distance_from_threshold = abs(score - threshold)
+        high_threshold = threshold + 0.35
+        low_threshold = threshold - 0.35
+        med_high = threshold + 0.15
+        med_low = threshold - 0.15
         
-        if score >= 0.75 or score <= 0.25:
+        if score >= high_threshold or score <= low_threshold:
             band = ConfidenceBand.HIGH
             confidence = min(1.0, distance_from_threshold * 2)
-        elif score >= 0.55 or score <= 0.45:
+        elif score >= med_high or score <= med_low:
             band = ConfidenceBand.MEDIUM
             confidence = distance_from_threshold * 2
         else:
@@ -142,7 +147,7 @@ class SciBERTClassifier:
         paper: Paper,
         include_prompt: str,
         exclude_prompt: str,
-        threshold: float = 0.5,
+        threshold: float = 0.35,
         phase: ScreeningPhase = ScreeningPhase.TITLE_ABSTRACT,
     ) -> ScreeningResult:
         """Classify paper relevance using zero-shot approach."""

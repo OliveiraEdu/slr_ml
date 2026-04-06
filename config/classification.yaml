@@ -156,17 +156,17 @@ classification:
       - "position paper"
       - "vision paper"
 
-  # Confidence band thresholds
+  # Confidence band thresholds (based on new threshold of 0.35)
   confidence_bands:
-    high: 0.75     # Score >= 0.75 or <= 0.25 → High confidence
-    medium: 0.55    # Score >= 0.55 or <= 0.45 → Medium confidence
-    low: 0.45       # Score between 0.45 and 0.55 → Low confidence (manual review required)
+    high: 0.70     # Score >= 0.70 or <= 0.10 → High confidence (far from 0.35)
+    medium: 0.55   # Score >= 0.55 or <= 0.25 → Medium confidence
+    low: 0.40     # Score between 0.25 and 0.45 → Low confidence (manual review required)
 
   # Thresholds for screening decisions
   thresholds:
-    include: 0.6    # Score >= 0.6 → Include
-    exclude: 0.3    # Score <= 0.3 → Exclude
-    uncertain: 0.3  # 0.3 - 0.6 → Manual review
+    include: 0.35    # Score >= 0.35 → Include (lower for solo PhD to maximize recall)
+    exclude: 0.2     # Score <= 0.2 → Exclude
+    uncertain: 0.35  # 0.2 - 0.35 → Manual review
     confidence: 0.15
 
   # Screening stages
@@ -202,7 +202,7 @@ enhanced_screening:
   # Snowballing settings
   snowballing:
     enabled: true
-    max_depth: 2
+    max_depth: 4      # Increased from 2 to capture more related work
     max_papers_per_source: 50
     include_references: true
     include_citations: true

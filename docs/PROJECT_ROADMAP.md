@@ -4,7 +4,7 @@
 **Research Question**: "How can machine-actionable Data Management Plans (maDMPs) be persisted on a blockchain to enable verifiable provenance tracking for scientific data?"  
 **Estimated Paper Volume**: ~8,000 records  
 **Target Venues**: Computer Science PhD Thesis  
-**Version**: 0.5.0
+**Current Version**: 0.6.0
 
 ---
 
@@ -32,7 +32,7 @@ make prisma-report    # Generate PRISMA report
 
 ## Development Phases
 
-### Phase 1: ML-Assisted Screening (Complete)
+### Phase 1: ML-Assisted Screening ✅ Complete
 **Timeline**: 1-2 weeks  
 **Goal**: Make ML useful for high-volume screening with interpretable confidence
 
@@ -63,7 +63,7 @@ make prisma-report    # Generate PRISMA report
 
 ---
 
-### Phase 2: Full PRISMA 2020 Compliance (Complete)
+### Phase 2: Full PRISMA 2020 Compliance ✅ Complete
 **Timeline**: 3-4 weeks  
 **Goal**: Generate defensible PRISMA documentation for thesis
 
@@ -86,7 +86,7 @@ make prisma-report    # Generate PRISMA report
 
 ---
 
-### Phase 3: Full-Text Screening Workflow (Complete)
+### Phase 3: Full-Text Screening Workflow ✅ Complete
 **Timeline**: 5-6 weeks  
 **Goal**: Two-stage screening (title/abstract → full text)
 
@@ -126,7 +126,7 @@ Final Included Studies
 
 ---
 
-### Phase 4: Data Extraction & Synthesis (Complete)
+### Phase 4: Data Extraction & Synthesis ✅ Complete
 **Timeline**: 7-8 weeks  
 **Goal**: Extract and synthesize findings from included studies
 
@@ -168,7 +168,43 @@ Final Included Studies
 
 ---
 
-### Data Source Downloads (Complete)
+### Phase 5: World-Class SLR Enhancements ✅ Complete (v0.6.0)
+**Timeline**: 2-3 weeks  
+**Goal**: Elevate output to world-class publication quality for solo PhD
+
+#### Features Implemented
+- [x] Dual screening support with Cohen's Kappa calculation
+- [x] CSV export/import for manual review workflow
+- [x] Sensitivity analysis (threshold and confidence)
+- [x] Publication bias detection
+- [x] Risk of bias assessment (RoB 2.0, ROBINS-T)
+- [x] PRISMA 2020 completeness tracker
+- [x] Screening decision provenance tracking
+- [x] Full-text retrieval via DOI/arXiv
+- [x] World-class readiness assessment
+
+#### Phase 5 Endpoints
+| Endpoint | Description |
+|----------|-------------|
+| `GET /screening/queue/uncertain/csv` | Download CSV for manual review |
+| `GET /screening/queue/all/csv` | Export all papers to CSV |
+| `POST /screening/review/import-csv` | Import reviewed CSV |
+| `GET /advanced/dual-screening/add` | Add dual screening result |
+| `GET /advanced/dual-screening/kappa` | Calculate Cohen's Kappa |
+| `GET /advanced/dual-screening/conflicts` | Get reviewer conflicts |
+| `GET /advanced/sensitivity/threshold` | Threshold sensitivity analysis |
+| `GET /advanced/sensitivity/confidence` | Confidence sensitivity |
+| `GET /advanced/risk-of-bias/{id}` | Single paper RoB assessment |
+| `POST /advanced/risk-of-bias/batch` | Batch RoB assessment |
+| `GET /advanced/completeness` | Workflow completeness tracking |
+| `GET /advanced/readiness` | World-class readiness score |
+| `POST /fulltext/retrieve` | Retrieve paper PDF |
+| `POST /fulltext/retrieve/batch` | Batch PDF retrieval |
+| `GET /fulltext/progress` | FT retrieval progress |
+
+---
+
+### Data Source Downloads ✅ Complete
 
 #### Configuration
 File: `config/data_sources.yaml`
@@ -179,13 +215,14 @@ Supported sources: WoS, IEEE, ACM, Scopus, PubMed, ArXiv
 | Endpoint | Description |
 |----------|-------------|
 | `GET /papers/sources` | List configured sources |
+| `POST /papers/arxiv` | Query arXiv API |
 | `POST /papers/download` | Download from URL |
 | `POST /papers/download-all` | Download all enabled sources |
 | `POST /papers/import-from-url` | Download and import |
 
 ---
 
-### Auto-Config Loading (Complete)
+### Auto-Config Loading ✅ Complete
 
 Configuration files are automatically loaded on API startup:
 - `config/sources.yaml` - Data source configuration
@@ -205,6 +242,7 @@ make logs               # View logs
 make logs-api           # API logs only
 make clean              # Remove containers + volumes
 make status             # Check service health
+make rebuild            # Rebuild and restart
 ```
 
 ### Development
@@ -215,19 +253,21 @@ make lint               # Run black/isort
 make typecheck          # Run mypy
 ```
 
-### Testing (Pending)
+### Testing
 ```bash
 make test               # Unit tests only
 make test-integration   # Integration tests (requires running API)
 make test-all           # All tests
 make coverage           # Tests with coverage report
+make verify-api        # Verify API is accessible
+make smoke-test        # Comprehensive API smoke test
 ```
 
 ### Workflow Commands
 ```bash
 make health             # Check API health
 make import-sample      # Import from inputs/
-make screen             # Run ML screening
+make screen            # Run ML screening
 make queue              # Get uncertain papers
 make stats              # Screening statistics
 make rank               # Top papers by relevance
@@ -252,6 +292,113 @@ make sources            # List configured sources
 make download-all       # Download all sources
 make import-downloaded  # Import downloaded files
 ```
+
+### Enhanced Screening
+```bash
+make keyword-filter     # Keyword pre-filtering
+make al-select          # Active learning selection
+make snowballing         # Snowballing search
+make certainty          # Certainty-based auto decisions
+make cite-rank          # Citation ranking
+make enhanced-full       # Full enhanced pipeline
+make enhanced-workflow   # Complete enhanced workflow
+```
+
+---
+
+## Future Enhancements (v1.x)
+
+### v1.1 - Source Expansion
+**Priority:** High
+
+#### arXiv API Integration ✅ Complete
+Pull recent preprints from arXiv to capture latest research before formal publication.
+
+#### PubMed Integration ✅ Complete
+Add PubMed/MEDLINE as a data source for biomedical literature.
+
+#### Async DOI Enrichment
+- Background task processing for large batches
+- Progress tracking and status endpoint
+- WebSocket notifications for completion
+- Configurable batch sizes
+- Retry logic with exponential backoff
+
+---
+
+### v1.2 - Enhanced Screening
+
+#### Multi-Model Classification
+Support multiple ML backends for classification:
+- SciBERT (current) ✅
+- BioBERT (for biomedical)
+- PubMedBERT (specialized for medical literature)
+- RoBERTa-base (general NLP)
+
+#### Hybrid Screening
+Combine ML classification with keyword-based rules for higher accuracy.
+
+#### Fine-tuning Pipeline
+- GPU-enabled training
+- Active learning with human feedback
+- Iterative model improvement
+
+---
+
+### v1.3 - Quality & Validation
+
+#### Inter-Rater Reliability ✅ Complete (v0.6.0)
+- Cohen's Kappa between reviewers
+- Flag papers with low confidence for manual review
+
+#### Risk of Bias Assessment ✅ Complete (v0.6.0)
+- Add ROBINS-I for non-randomized studies ✅
+- Add RoB 2 for randomized trials ✅
+
+#### Data Extraction Templates
+- Customizable extraction forms
+- PDF form generation for manual extraction
+
+---
+
+### v1.4 - Reporting Enhancements
+
+#### Multiple Export Formats
+- [x] Markdown ✅
+- [x] LaTeX ✅
+- [ ] Word (.docx)
+- [ ] HTML
+- [ ] PDF via LaTeX
+
+#### Interactive Dashboard
+- Web-based visualization
+- Filtering and sorting
+- Manual annotation tools
+
+#### Citation Network Analysis
+- Build citation graph from CrossRef/DataCite
+- Visualize citation relationships
+- Identify influential papers
+
+---
+
+### v1.5 - Advanced Features
+
+#### LLM-Powered Extraction
+Use large language models for:
+- Automatic key findings extraction
+- Methodology summarization
+- Limitation identification
+
+#### Systematic Review Updates
+Track citations to included studies for:
+- New related papers alerts
+- Citation tracking for updated reviews
+
+#### Collaborative Screening
+- Multi-user support
+- Conflict resolution workflow
+- Progress tracking
 
 ---
 
@@ -282,16 +429,16 @@ make import-downloaded  # Import downloaded files
 
 | Phase | Status | Key Deliverables |
 |-------|--------|------------------|
-| Phase 1 | ✓ Complete | ML screening with confidence bands, batch review |
-| Phase 2 | ✓ Complete | PRISMA 2020 checklist, protocol, report generator |
-| Phase 3 | ✓ Complete | Two-stage screening, DOI retrieval, FT management |
-| Phase 4 | ✓ Complete | Extraction schema, synthesis, quality assessment |
-| Data Sources | ✓ Complete | URL downloader, multi-source import |
-| Batch Operations | ✓ Complete | Batch review, CSV export |
-| Auto-Config | ✓ Complete | Config auto-loads on startup |
+| Phase 1 | ✅ Complete | ML screening with confidence bands, batch review |
+| Phase 2 | ✅ Complete | PRISMA 2020 checklist, protocol, report generator |
+| Phase 3 | ✅ Complete | Two-stage screening, DOI retrieval, FT management |
+| Phase 4 | ✅ Complete | Extraction schema, synthesis, quality assessment |
+| Phase 5 | ✅ Complete | World-class enhancements, dual screening, RoB |
+| Data Sources | ✅ Complete | URL downloader, multi-source import, arXiv |
+| Auto-Config | ✅ Complete | Config auto-loads on startup |
 | **Testing** | ⏳ Pending | Unit + integration tests |
 
-**Total Endpoints**: ~40 API endpoints
+**Total Endpoints**: ~50+ API endpoints
 
 ---
 
@@ -299,10 +446,9 @@ make import-downloaded  # Import downloaded files
 
 1. **ML Accuracy**: SciBERT zero-shot not fine-tuned for domain
 2. **Ground Truth**: No seed papers yet for similarity search
-3. **Dual Review**: Single-reviewer mode (solo PhD)
-4. **Protocol Registration**: Not yet registered on PROSPERO
-5. **Data Visualization**: Charts/graphs not yet implemented
-6. **PDF Export**: Report export not yet implemented
+3. **Protocol Registration**: Not yet registered on PROSPERO
+4. **Data Visualization**: Charts/graphs not yet implemented
+5. **PDF Export**: Report export not yet implemented
 
 ---
 
@@ -325,11 +471,20 @@ slr_ml/
 │   │       ├── papers.py         # Paper import/export
 │   │       ├── screening.py      # ML screening workflow
 │   │       ├── prisma.py         # PRISMA reporting
-│   │       ├── enrichment.py     # DOI enrichment
+│   │       ├── enrichment.py      # DOI enrichment
 │   │       ├── config.py         # Configuration
-│   │       └── converters.py     # Format conversion
+│   │       ├── converters.py      # Format conversion
+│   │       ├── advanced.py        # Dual screening, sensitivity, RoB
+│   │       └── fulltext.py        # Full-text retrieval
 │   ├── ml/                       # ML classifiers
 │   ├── pipeline/                 # Processing pipelines
+│   │   ├── dual_screening.py     # Dual screening + Cohen's Kappa
+│   │   ├── sensitivity_analysis.py # Threshold sensitivity + bias
+│   │   ├── risk_of_bias.py       # RoB 2.0, ROBINS-T
+│   │   ├── completeness.py        # PRISMA 2020 completeness
+│   │   ├── provenance.py         # Screening decision audit
+│   │   ├── fulltext_retriever.py # DOI/arXiv PDF retrieval
+│   │   └── extraction.py         # Data extraction
 │   ├── loaders/                  # BibTeX, CSV loaders
 │   ├── connectors/               # ArXiv, DOI, URL downloader
 │   ├── models/                   # Pydantic schemas
@@ -337,6 +492,12 @@ slr_ml/
 ├── config/                       # YAML configuration
 ├── inputs/                       # Input papers
 ├── outputs/                      # Generated reports
+├── scripts/                      # Utility scripts
+│   └── export_review_queue.py    # CSV export/import
 ├── tests/                        # Test suite
 └── docs/                         # Documentation
 ```
+
+---
+
+*Last Updated: March 2026 | Version 0.6.0*
