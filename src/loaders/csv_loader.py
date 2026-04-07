@@ -18,34 +18,45 @@ class CsvLoader:
         """Get field mappings for different CSV formats."""
         return {
             "scopus": {
-                "title": ["Title"],
-                "authors": ["Authors", "Author full names"],
-                "abstract": ["Abstract"],
-                "year": ["Year"],
-                "doi": ["DOI"],
-                "url": ["Link"],
-                "journal": ["Source title"],
-                "keywords": ["Author Keywords", "Index Keywords"],
+                "title": ["Title", "title"],
+                "authors": ["Authors", "Author full names", "author"],
+                "abstract": ["Abstract", "abstract"],
+                "year": ["Year", "year", "Publication Year"],
+                "doi": ["DOI", "doi"],
+                "url": ["Link", "URL", "link"],
+                "journal": ["Source title", "Journal", "source"],
+                "keywords": ["Author Keywords", "Index Keywords", "keywords"],
             },
             "ieee": {
-                "title": ["Title"],
-                "authors": ["Authors"],
-                "abstract": None,
-                "year": ["Publication Year"],
-                "doi": ["DOI"],
-                "url": None,
-                "journal": ["Journal/Book"],
-                "keywords": None,
+                "title": ["Title", "title"],
+                "authors": ["Authors", "author"],
+                "abstract": ["Abstract", "abstract"],
+                "year": ["Publication Year", "Year", "year"],
+                "doi": ["DOI", "doi"],
+                "url": ["URL", "link"],
+                "journal": ["Journal/Book", "Journal", "source"],
+                "keywords": ["Keywords", "keywords"],
+            },
+            "pubmed": {
+                "title": ["Title", "title"],
+                "authors": ["Authors", "author"],
+                "abstract": ["Abstract", "abstract"],
+                "year": ["Publication Year", "Year", "year"],
+                "doi": ["DOI", "doi"],
+                "url": ["URL", "link"],
+                "journal": ["Journal/Book", "Journal", "source"],
+                "keywords": ["Keywords", "keywords"],
+                "pmid": ["PMID", "PubMed ID"],
             },
             "wos": {
-                "title": ["TI", "Title"],
-                "authors": ["AU", "Authors"],
-                "abstract": ["AB", "Abstract"],
-                "year": ["PY", "Year"],
-                "doi": ["DI", "DOI"],
-                "url": ["URL", "UR"],
-                "journal": ["SO", "Journal", "Source"],
-                "keywords": ["DE", "Keywords"],
+                "title": ["TI", "Title", "title"],
+                "authors": ["AU", "Authors", "author"],
+                "abstract": ["AB", "Abstract", "abstract"],
+                "year": ["PY", "Year", "year"],
+                "doi": ["DI", "DOI", "doi"],
+                "url": ["URL", "UR", "link"],
+                "journal": ["SO", "Journal", "Source", "source"],
+                "keywords": ["DE", "Keywords", "keywords"],
             },
             "generic": {
                 "title": ["title", "Title", "TITLE"],
@@ -56,16 +67,6 @@ class CsvLoader:
                 "url": ["url", "URL", "link", "Link"],
                 "journal": ["journal", "Journal", "source", "Source", "publication"],
                 "keywords": ["keywords", "Keywords", "KEYWORDS"],
-            },
-            "pubmed": {
-                "title": ["Title"],
-                "authors": ["Authors"],
-                "abstract": None,
-                "year": ["Publication Year"],
-                "doi": ["DOI"],
-                "url": None,
-                "journal": ["Journal/Book"],
-                "keywords": None,
             },
         }
 
@@ -90,8 +91,12 @@ class CsvLoader:
 
     def _is_valid_row(self, row: dict) -> bool:
         """Check if row has valid content."""
-        title = row.get("Title", "") or row.get("title", "")
-        return bool(title and title.strip())
+        title = None
+        for key in row.keys():
+            if key.lower() in ["title", "ti"]:
+                title = row.get(key)
+                break
+        return bool(title and str(title).strip())
 
     def _parse_row(
         self, row: dict, source: SourceName, format_type: str

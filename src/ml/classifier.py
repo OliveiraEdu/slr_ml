@@ -117,28 +117,28 @@ class SciBERTClassifier:
         
         Confidence is measured as how far the score is from the decision boundary.
         Uses configurable bands based on threshold (default: 0.35 for solo PhD).
-        - HIGH: score >= threshold + 0.35 or score <= threshold - 0.35
-        - MEDIUM: score >= threshold + 0.15 or score <= threshold - 0.15
-        - LOW: score within ±0.15 of threshold (uncertain zone - manual review)
+        - HIGH: score >= threshold + 0.20 or score <= threshold - 0.20
+        - MEDIUM: score >= threshold + 0.10 or score <= threshold - 0.10
+        - LOW: score within ±0.10 of threshold (uncertain zone - manual review)
         
         Returns:
             Tuple of (ConfidenceBand, confidence_score)
         """
         distance_from_threshold = abs(score - threshold)
-        high_threshold = threshold + 0.35
-        low_threshold = threshold - 0.35
-        med_high = threshold + 0.15
-        med_low = threshold - 0.15
+        high_threshold = threshold + 0.20
+        low_threshold = threshold - 0.20
+        med_high = threshold + 0.10
+        med_low = threshold - 0.10
         
         if score >= high_threshold or score <= low_threshold:
             band = ConfidenceBand.HIGH
-            confidence = min(1.0, distance_from_threshold * 2)
+            confidence = min(1.0, distance_from_threshold * 3)
         elif score >= med_high or score <= med_low:
             band = ConfidenceBand.MEDIUM
-            confidence = distance_from_threshold * 2
+            confidence = min(1.0, distance_from_threshold * 3)
         else:
             band = ConfidenceBand.LOW
-            confidence = distance_from_threshold * 2
+            confidence = distance_from_threshold * 3
         
         return band, confidence
 
