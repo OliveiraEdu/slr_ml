@@ -185,12 +185,17 @@ async def get_completeness():
     """Get workflow completeness and PRISMA 2020 readiness."""
     app_state = get_app_state()
     
+    checklist = app_state.get("prisma_checklist")
+    checklist_rate = 0
+    if checklist and hasattr(checklist, "completeness_score"):
+        checklist_rate = checklist.completeness_score
+    
     completeness = WorkflowCompleteness(
         import_status=app_state.get("import_status", {}),
         screening_status=app_state.get("screening_status", {}),
         extraction_status={"papers_extracted": len(app_state.get("extraction_data", []))},
         quality_status={"papers_assessed": len(app_state.get("quality_data", []))},
-        checklist_status={"completion_rate": app_state.get("prisma_checklist", {}).get("completeness_score", 0)},
+        checklist_status={"completion_rate": checklist_rate},
     )
     
     checker = PRISMACompletenessChecker()
@@ -207,12 +212,17 @@ async def get_world_class_readiness():
     """Assess world-class PRISMA 2020 readiness."""
     app_state = get_app_state()
     
+    checklist = app_state.get("prisma_checklist")
+    checklist_rate = 0
+    if checklist and hasattr(checklist, "completeness_score"):
+        checklist_rate = checklist.completeness_score
+    
     completeness = WorkflowCompleteness(
         import_status=app_state.get("import_status", {}),
         screening_status=app_state.get("screening_status", {}),
         extraction_status={"papers_extracted": len(app_state.get("extraction_data", []))},
         quality_status={"papers_assessed": len(app_state.get("quality_data", []))},
-        checklist_status={"completion_rate": app_state.get("prisma_checklist", {}).get("completeness_score", 0)},
+        checklist_status={"completion_rate": checklist_rate},
         dual_screening_status={"kappa_calculated": False},
     )
     
