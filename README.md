@@ -172,6 +172,47 @@ make download-all       # Download all sources
 | `/advanced/completeness` | GET | Workflow completeness tracking |
 | `/advanced/readiness` | GET | World-class readiness score |
 
+### Papers Management
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/papers/import` | POST | Import from file |
+| `/papers/arxiv` | POST | Query arXiv API |
+| `/papers/dedupe` | POST | Remove duplicates |
+| `/papers/filter` | POST | **Filter by year, source, keywords** |
+| `/papers/list` | GET | List papers |
+| `/papers/enrich` | POST | DOI metadata enrichment |
+| `/papers/enrich/{id}` | GET | Enrich single paper |
+
+### PROSPERO & Gray Literature
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/prospero/search` | POST | Search PROSPERO registry |
+| `/prospero/check-papers` | POST | Check papers for protocol |
+| `/prospero/status/{id}` | GET | Get PROSPERO status |
+
+### MeSH (Biomedical)
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/mesh/search/{keyword}` | GET | Search MeSH terms |
+| `/mesh/match` | POST | Match papers to MeSH |
+| `/mesh/expand` | POST | Expand keywords with MeSH |
+
+### Citation Analysis
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/citations/enrich-semantic` | POST | Semantic Scholar enrichment |
+| `/citations/network/{id}` | GET | Citation network |
+| `/citations/rank-influence` | POST | Rank by influential citations |
+| `/citations/pivotal` | POST | Find pivotal papers |
+
+### GRADE Assessment
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/grade/assess` | POST | GRADE assessment |
+| `/grade/batch` | POST | Batch GRADE |
+| `/grade/summary` | GET | GRADE summary |
+| `/grade/levels` | GET | GRADE level descriptions |
+
 ### Full-Text
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -237,24 +278,41 @@ The classification threshold controls the sensitivity of the ML screening:
 
 | Threshold | Use Case | Recall | Precision | Manual Review |
 |-----------|----------|--------|-----------|---------------|
+| **0.15** | Recent papers (2023-2026), high recall | High | Lower | ~309 papers |
 | **0.35** | Solo PhD, comprehensive capture | High | Lower | More papers |
 | **0.50** | Team review, balanced | Medium | Medium | Moderate |
 | **0.60** | Conservative, high confidence | Lower | High | Fewer papers |
+
+### Time Range Considerations
+
+For recent papers (last 3 years), the local ctransformate2 model produces lower scores. Recommended approach:
+
+- **2023-2026 (3 years)**: Use threshold **0.15** for best results (~309 papers to review)
+- **Full dataset**: Use threshold **0.35** for comprehensive capture
+- **Filter before screening**: Reduce workload by filtering to target time range first
 
 ### Confidence Bands
 
 With threshold 0.35, confidence bands are:
 
-- **HIGH**: score ≥ 0.70 or ≤ 0.10 (confident decisions)
-- **MEDIUM**: score ≥ 0.55 or ≤ 0.25 (reasonably confident)
-- **LOW**: score 0.25-0.45 (manual review recommended)
+- **HIGH**: score ≥ 0.55 or ≤ 0.15 (confident decisions)
+- **MEDIUM**: score ≥ 0.45 or ≤ 0.25 (reasonably confident)
+- **LOW**: score between 0.25 and 0.45 (manual review recommended)
+
+For recent papers (threshold 0.15), adjust bands accordingly:
+
+- **HIGH**: score ≥ 0.35 or ≤ 0.05
+- **MEDIUM**: score ≥ 0.25 or ≤ 0.10
+- **LOW**: score between 0.10 and 0.25
 
 ### Recommended Workflow
 
-1. **Initial screening**: Use `threshold=0.35` to maximize recall
-2. **Export uncertain**: Get papers in LOW confidence band for manual review
-3. **Refine threshold**: Run sensitivity analysis to find optimal threshold
-4. **Final screening**: Use optimized threshold for final decisions
+1. **Import & dedupe**: Load papers from all sources, remove duplicates
+2. **Filter by date**: Use `/papers/filter` to narrow to target years
+3. **Initial screening**: Use threshold 0.15 (recent) or 0.35 (full)
+4. **Export uncertain**: Get papers in LOW confidence band for manual review
+5. **Refine threshold**: Run sensitivity analysis to find optimal threshold
+6. **Final screening**: Use optimized threshold for final decisions
 
 ## Solo PhD Workflow
 

@@ -225,6 +225,91 @@ async def list_papers(
     }
 
 
+class PaperFilterRequest(BaseModel):
+    """Filter papers by various criteria."""
+    year_from: Optional[int] = None
+    year_to: Optional[int] = None
+    source: Optional[str] = None
+    has_doi: Optional[bool] = None
+    min_citations: Optional[int] = None
+    keywords: Optional[list[str]] = None
+    include_keywords: Optional[list[str]] = None
+    exclude_keywords: Optional[list[str]] = None
+
+
+@router.post("/filter")
+async def filter_papers(
+    request: PaperFilterRequest,
+):
+    """Filter papers by year range, source, DOI, citations, or keywords."""
+    app_state = get_app_state()
+    papers = app_state["papers"]
+    
+    original_count = len(papers)
+    filtered = papers
+    
+    if request.year_from is not None:
+        filtered = [p for p in filtered if p.year and p.year >= request.year_from]
+    
+    if request.year_to is not None:
+        filtered = [p for p in filtered if p.year and p.year <= request.year_to]
+    
+    if request.source:
+        filtered = [p for p in filtered if p.source.value == request.source.lower()]
+    
+    if request.has_doi is not None:
+        if request.has_doi:
+            filtered = [p for p in filtered if p.doi]
+        else:
+            filtered = [p for p in filtered if not p.doi]
+    
+    if request.min_citations is not None:
+        filtered = [p for p in filtered if (p.citations or 0) >= request.min_citations]
+    
+    if request.keywords:
+        keyword_lower = [k.lower() for k in request.keywords]
+        filtered = [
+            p for p in filtered
+            if any(k in (p.title or "").lower() or k in (p.abstract or "").lower() 
+                   for k in keyword_lower)
+        ]
+    
+    if request.include_keywords:
+        keyword_lower = [k.lower() for k in request.include_keywords]
+        filtered = [
+            p for p in filtered
+            if any(k in (p.title or "").lower() or k in (p.abstract or "").lower() 
+                   for k in keyword_lower)
+        ]
+    
+    if request.exclude_keywords:
+        for keyword in request.exclude_keywords:
+            kw_lower = keyword.lower()
+            filtered = [
+                p for p in filtered
+                if kw_lower not in (p.title or "").lower() and kw_lower not in (p.abstract or "").lower()
+            ]
+    
+    app_state["papers"] = filtered
+    
+    year_range = f"{request.year_from or ' earliest'}-{request.year_to or ' latest'}" if request.year_from or request.year_to else "all"
+    
+    return {
+        "status": "filtered",
+        "original_count": original_count,
+        "filtered_count": len(filtered),
+        "removed": original_count - len(filtered),
+        "filters": {
+            "year_range": year_range,
+            "source": request.source,
+            "has_doi": request.has_doi,
+            "min_citations": request.min_citations,
+            "include_keywords": request.include_keywords,
+            "exclude_keywords": request.exclude_keywords,
+        },
+    }
+
+
 @router.post("/dedupe")
 async def deduplicate_papers(
     request: DedupeRequest = Body(default=DedupeRequest()),

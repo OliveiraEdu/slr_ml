@@ -67,9 +67,9 @@ async def run_screening(
             ranking_weights = app_state["classification_config"].ranking_weights
         
         classifier = SciBERTClassifier(
-            model_name="allenai/scibert_scivocab_uncased",
+            model_name="models/scibert-ct2",
             device="auto",
-            backend=BackendType.AUTO,
+            backend=BackendType.CTRANSFORMATE2,
             keywords=keywords,
             ranking_weights=ranking_weights,
         )

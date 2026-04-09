@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Lowered default threshold from 0.6 to 0.35 for better recall
 - Updated confidence band calculation to use dynamic threshold
 - Added threshold selection guide to README (Solo PhD: 0.35, Team: 0.5, Conservative: 0.6)
+- Added date range filter for time-limited SLRs
 
 #### P2: Data Sources & Gray Literature
 - Added gray literature sources to `config/data_sources.yaml`:
@@ -40,6 +41,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Recommendation strength (Strong/Weak)
 - Added ROBIS assessment to existing risk_of_bias module
 - Added ROBIS endpoints (`/advanced/robis/{review_id}`, `/advanced/robis/batch`)
+
+#### Bug Fixes
+- Fixed CSV parsing for Scopus and PubMed (case-insensitive field mappings)
+- Fixed `/advanced/readiness` endpoint (PrismaChecklist attribute access)
+- Fixed confidence bands to trigger properly (adjusted thresholds ±0.20, ±0.10)
+- Changed default model to local ctransformate2 (`models/scibert-ct2`)
+
+#### Date Filter Feature
+- Added `/papers/filter` endpoint with:
+  - `year_from` / `year_to` - Filter by publication year
+  - `source` - Filter by database source
+  - `has_doi` - Filter by DOI presence
+  - `min_citations` - Filter by citation count
+  - `include_keywords` / `exclude_keywords` - Keyword filtering
+
+#### Test Results (3-year range: 2023-2026)
+- 617 papers after filtering
+- Best threshold for recent papers: 0.15 (13 included + 298 uncertain = 309 manual review)
+- Full dataset: threshold 0.35 recommended
 
 ### Build Status
 - `pytest` ✅
