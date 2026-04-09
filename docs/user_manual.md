@@ -267,6 +267,57 @@ curl -X POST http://localhost:8000/papers/download-all \
 curl -X POST http://localhost:8000/papers/dedupe
 ```
 
+### Filter Papers by Date, Source, or Keywords
+
+After deduplication, you can filter papers to focus on specific time ranges or sources:
+
+```bash
+# Filter by publication year (2023-2026 - last 3 years)
+curl -X POST http://localhost:8000/papers/filter \
+  -H "Content-Type: application/json" \
+  -d '{"year_from": 2023, "year_to": 2026}'
+
+# Filter by single year
+curl -X POST http://localhost:8000/papers/filter \
+  -H "Content-Type: application/json" \
+  -d '{"year_from": 2024, "year_to": 2024}'
+
+# Filter by source
+curl -X POST http://localhost:8000/papers/filter \
+  -H "Content-Type: application/json" \
+  -d '{"source": "acm"}'
+
+# Filter by keywords (include)
+curl -X POST http://localhost:8000/papers/filter \
+  -H "Content-Type: application/json" \
+  -d '{"include_keywords": ["blockchain", "provenance"]}'
+
+# Filter by keywords (exclude)
+curl -X POST http://localhost:8000/papers/filter \
+  -H "Content-Type: application/json" \
+  -d '{"exclude_keywords": ["cryptocurrency", "bitcoin"]}'
+
+# Filter papers with DOI
+curl -X POST http://localhost:8000/papers/filter \
+  -H "Content-Type: application/json" \
+  -d '{"has_doi": true}'
+
+# Filter by minimum citations
+curl -X POST http://localhost:8000/papers/filter \
+  -H "Content-Type: application/json" \
+  -d '{"min_citations": 10}'
+
+# Combined filters
+curl -X POST http://localhost:8000/papers/filter \
+  -H "Content-Type: application/json" \
+  -d '{"year_from": 2023, "year_to": 2026, "source": "scopus", "include_keywords": ["blockchain"]}'
+```
+
+**Why filter by date?**
+- Recent papers (last 2-3 years) may need lower thresholds
+- Focus on most relevant literature for time-sensitive reviews
+- Reduce screening workload for focused reviews
+
 #### Step 4: Run Screening
 
 ```bash
@@ -359,10 +410,41 @@ curl -X POST http://localhost:8000/papers/arxiv \
 # 3. Deduplicate
 curl -X POST http://localhost:8000/papers/dedupe
 
-# 4. Screen with LOWER threshold (captures more, you filter manually)
+# 4. OPTIONAL: Filter by date range (for time-limited reviews)
+# Last 3 years (2023-2026):
+curl -X POST http://localhost:8000/papers/filter \
+  -H "Content-Type: application/json" \
+  -d '{"year_from": 2023, "year_to": 2026}'
+
+# Last 5 years (2020-2026):
+curl -X POST http://localhost:8000/papers/filter \
+  -H "Content-Type: application/json" \
+  -d '{"year_from": 2020, "year_to": 2026}'
+
+# 5. Screen with LOWER threshold (captures more, you filter manually)
+
+# For recent papers (last 3 years), use threshold 0.15:
+curl -X POST http://localhost:8000/screening/run \
+  -H "Content-Type: application/json" \
+  -d '{"threshold": 0.15}'
+
+# For full dataset, use threshold 0.35:
 curl -X POST http://localhost:8000/screening/run \
   -H "Content-Type: application/json" \
   -d '{"threshold": 0.35}'
+
+### Threshold Selection Guide
+
+The threshold controls how many papers are automatically included:
+
+| Dataset | Threshold | Included | Uncertain | Manual Review | Notes |
+|---------|-----------|----------|-----------|---------------|-------|
+| Recent (3yr) | 0.15 | 13 | 298 | ~309 | Best for recent papers |
+| Recent (3yr) | 0.35 | 0 | 13 | ~26 | Too strict for recent |
+| Full | 0.35 | ~1000+ | ~200 | ~1400 | High recall |
+| Full | 0.50 | ~500 | ~300 | ~1100 | Balanced |
+
+**Tip**: Start with higher threshold (0.35) and lower it if too many papers are missed.
 
 # 5. Check statistics
 curl http://localhost:8000/screening/statistics
@@ -562,6 +644,38 @@ Request:
 **POST /papers/dedupe**
 
 Remove duplicate papers based on DOI and title.
+
+**POST /papers/filter**
+
+Filter papers by year, source, keywords, DOI, or citations.
+
+Request:
+```json
+{
+  "year_from": 2023,
+  "year_to": 2026,
+  "source": "acm",
+  "include_keywords": ["blockchain", "provenance"],
+  "exclude_keywords": ["cryptocurrency"],
+  "has_doi": true,
+  "min_citations": 5
+}
+```
+
+Response:
+```json
+{
+  "status": "filtered",
+  "original_count": 1000,
+  "filtered_count": 350,
+  "removed": 650,
+  "filters": {
+    "year_range": "2023-2026",
+    "source": "acm",
+    "include_keywords": ["blockchain", "provenance"]
+  }
+}
+```
 
 **GET /papers/list**
 
