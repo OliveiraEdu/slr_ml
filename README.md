@@ -1,8 +1,30 @@
 # PRISMA 2020 Systematic Literature Review Engine
 
-**Version**: 0.6.0
+**Version**: 0.7.0
 
-A configuration-driven systematic literature review engine that automates paper retrieval, screening, and classification following PRISMA 2020 guidelines using SciBERT for zero-shot classification.
+A configuration-driven systematic literature review engine that automates paper retrieval, screening, and classification following PRISMA 2020 guidelines. Supports both SciBERT zero-shot classification and LLM agentic screening with multi-agent ensemble voting.
+
+## LLM Agentic Screening (v0.7.0+)
+
+New in v0.7.0: Multi-agent LLM ensemble for automated paper screening using local Qwen2.5-1.5B model.
+
+```bash
+# Full LLM screening workflow (~55 min)
+make llama-start       # Start llama-server
+make llm-test          # Test with samples
+make llm-screen-tuned  # Run 4-agent screening
+make llama-stop       # Stop server
+
+# Or single command
+make llm-workflow     # Full workflow
+```
+
+### Results
+- **Total**: 1,158 papers
+- **Auto-INCLUDE**: 605 (52.2%)
+- **Auto-EXCLUDE**: 440 (38.0%)
+- **Manual review**: 113 (9.8%)
+- **Confidence**: 59.9% unanimous decisions
 
 ## Features
 
@@ -120,6 +142,15 @@ make enhanced-workflow  # Complete workflow
 make checklist         # PRISMA 2020 checklist
 make prisma-flow       # Flow diagram
 make prisma-report     # Full report
+
+# LLM Agentic Screening (v0.7.0+)
+make llama-start          # Start llama-server with Qwen2.5-1.5B
+make llama-stop          # Stop llama-server
+make llama-status        # Check server status
+make llm-test           # Test with sample papers
+make llm-screen         # Run 3-agent screening
+make llm-screen-tuned  # Run 4-agent ensemble screening
+make llm-workflow       # Full automated LLM workflow
 ```
 
 ### Data Sources
