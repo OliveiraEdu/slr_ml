@@ -73,7 +73,16 @@ help:
 	@echo "  make prisma-flow     PRISMA flow diagram"
 	@echo "  make prisma-report   Full PRISMA 2020 report"
 	@echo ""
-	@echo "=== Direct API Access ==="
+	@echo "=== LLM Agentic Screening ==="
+	@echo "  make llama-start     Start llama-server with Qwen2.5-1.5B"
+	@echo "  make llama-stop      Stop llama-server"
+	@echo "  make llama-status   Check llama-server status"
+	@echo "  make llm-test       Test LLM ensemble with samples"
+	@echo "  make llm-screen     Run 3-agent LLM screening"
+	@echo "  make llm-screen-tuned Run 4-agent tuned ensemble"
+	@echo "  make llm-workflow    Full automated LLM workflow"
+	@echo ""
+	@echo "=== Direct API ==="
 	@echo "  Local:  curl http://localhost:$(API_PORT)/"
 	@echo "  Docker: curl http://$(API_HOST):$(API_PORT)/"
 	@echo "  Docs:   http://localhost:$(API_PORT)/docs"
@@ -473,3 +482,146 @@ enhanced-workflow:
 	@echo ""
 	@echo "Step 6: Get screening statistics"
 	@make stats
+
+# === LLM Agentic Screening Workflow ===
+
+# Paths
+LLAMA_BIN=/home/eduardo/Git/llama.cpp/build/bin/llama-server
+LLAMA_MODEL=qwen2.5-1.5b-instruct-q4_k_m.gguf
+LLAMA_PORT=8080
+LLAMA_DIR=/home/eduardo/Git/llama.cpp
+SLR_RESULTS_DIR=/home/eduardo/Git/d-OSPv2/docs/papers/search-results
+
+llama-start:
+	@echo "Starting llama-server with Qwen2.5-1.5B..."
+	@pkill -f llama-server 2>/dev/null || true
+	@sleep 1
+	@cd $(LLAMA_DIR) && \
+		CUDA_DEVICE_WAITS_ON_EXTERNAL_RESOURCE=1 GGML_CUDA_NO_VHM=1 nohup ./build/bin/llama-server \
+		-m models/$(LLAMA_MODEL) \
+		--host 0.0.0.0 --port $(LLAMA_PORT) --ctx-size 8192 --n-gpu-layers 99 \
+		--parallel 4 -fa on --threads 20 --cont-batching --metrics \
+		> /tmp/llama-server.log 2>&1 &
+	@sleep 3
+	@curl -s http://localhost:$(LLAMA_PORT)/health && echo " - llama-server ready!" || echo "Failed to start"
+
+llama-stop:
+	@pkill -f llama-server && echo "llama-server stopped" || echo "No llama-server running"
+
+llama-status:
+	@curl -s http://localhost:$(LLAMA_PORT)/health 2>/dev/null && echo " - Running" || echo "Not running"
+	@ps aux | grep llama-server | grep -v grep | head -1
+
+# Run LLM screening (3-agent ensemble)
+llm-screen:
+	@echo "Running LLM agentic screening (3-agent ensemble)..."
+	@source .venv/bin/activate && python3 -c "
+import asyncio, json, time
+from src.ml.ensemble_classifier import EnsembleVoter
+from src.models.schemas import Paper
+
+async def run():
+    with open('$(SLR_RESULTS_DIR)/deduplicated-papers.json') as f:
+        papers = [Paper(**p) for json.load(f)]
+    total = len(papers)
+    print(f'Screening {total} papers...')
+    
+    voter = EnsembleVoter()  # 3 agents
+    start = time.time()
+    inc, exc = [], []
+    
+    for i, p in enumerate(papers):
+        result = await voter.classify(p.title or '', p.abstract or '')
+        if result['decision'].value == 'INCLUDE':
+            inc.append({'title': p.title})
+        else:
+            exc.append({'title': p.title})
+        if (i+1) % 200 == 0:
+            print(f'{i+1}/{total}')
+    
+    elapsed = time.time() - start
+    print(f'Done: IN={len(inc)}, EX={len(exc)} in {elapsed/60:.1f}min')
+    
+    with open('$(SLR_RESULTS_DIR)/llm-screening.json', 'w') as f:
+        json.dump({'summary': {'total':total,'include':len(inc),'exclude':len(exc)}, 'included': inc}, f, default=str)
+
+asyncio.run(run())
+"
+
+# Run LLM screening (4-agent tuned ensemble)
+llm-screen-tuned:
+	@echo "Running LLM agentic screening (4-agent tuned ensemble)..."
+	@source .venv/bin/activate && python3 -c "
+import asyncio, json, time
+from src.ml.ensemble_classifier import EnsembleVoter
+from src.models.schemas import Paper
+
+async def run():
+    with open('$(SLR_RESULTS_DIR)/deduplicated-papers.json') as f:
+        papers = [Paper(**p) for json.load(f)]
+    total = len(papers)
+    print(f'Screening {total} papers with 4-agent ensemble...')
+    
+    voter = EnsembleVoter(num_agents=4)  # 4 agents
+    start = time.time()
+    inc, exc = [], []
+    patterns = {}
+    
+    for i, p in enumerate(papers):
+        result = await voter.classify(p.title or '', p.abstract or '')
+        v = result.get('votes', {})
+        pat = f\"{v.get('INCLUDE',0)}-{v.get('EXCLUDE',0)}\"
+        patterns[pat] = patterns.get(pat, 0) + 1
+        
+        if result['decision'].value == 'INCLUDE':
+            inc.append({'title': p.title, 'year': p.year})
+        else:
+            exc.append({'title': p.title})
+        
+        if (i+1) % 200 == 0:
+            print(f'{i+1}/{total}')
+    
+    elapsed = time.time() - start
+    print(f'Done: IN={len(inc)}, EX={len(exc)} in {elapsed/60:.1f}min')
+    print(f'Patterns: {patterns}')
+    
+    with open('$(SLR_RESULTS_DIR)/llm-tuned.json', 'w') as f:
+        json.dump({'summary': {'total':total,'include':len(inc),'exclude':len(exc)}, 'patterns':patterns, 'included': inc}, f, default=str)
+
+asyncio.run(run())
+"
+
+# Full automated LLM workflow
+llm-workflow:
+	@echo "=== Full LLM Agentic Screening Workflow ==="
+	@echo ""
+	@echo "Step 1: Start llama-server..."
+	@make llama-start
+	@echo ""
+	@echo "Step 2: Run 4-agent ensemble screening..."
+	@make llm-screen-tuned
+	@echo ""
+	@echo "Step 3: Generate confidence analysis..."
+	@echo "Done! Results saved to search-results/"
+	@echo ""
+	@echo "To stop server: make llama-stop"
+
+# Quick test with sample papers
+llm-test:
+	@echo "Testing LLM ensemble with sample papers..."
+	@source .venv/bin/activate && python3 -c "
+import asyncio
+from src.ml.ensemble_classifier import EnsembleVoter
+
+async def test():
+    voter = EnsembleVoter(num_agents=4)
+    tests = [
+        ('SciChain: Blockchain for Scientific Data', 'Uses blockchain for scientific data provenance.'),
+        ('Supply Chain Blockchain', 'Blockchain for retail supply chain.')
+    ]
+    for title, abstract in tests:
+        result = await voter.classify(title, abstract)
+        print(f'{title[:35]}... -> {result[\"decision\"].value} ({result.get(\"votes\", {})})')
+
+asyncio.run(test())
+"
